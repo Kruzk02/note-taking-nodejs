@@ -1,0 +1,28 @@
+services:
+  app:
+    container_name: nodejs-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    volumes:
+      - .:/usr/src/app/src
+      - /usr/src/app/node_modules
+    depends_on:
+      - mongo
+    environment:
+      - NODE_ENV=development
+      - MONGO_URI=mongodb://mongo:27017/mydb
+    command: nodemon -L index.js
+
+  mongo:
+    container_name: mongodb
+    image: mongo:6
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+
+volumes:
+  mongodb_data:
