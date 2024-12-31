@@ -1,4 +1,7 @@
 import { createServer } from "http";
+import { connectDb } from './configs/DatabaseConfig.js';
+
+connectDb();
 
 const server = createServer(function (req,res) {
   res.writeHead(200, {"Content-Type" : "text/plain"});
