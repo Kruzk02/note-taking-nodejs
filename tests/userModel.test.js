@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import User from '../src/models/userModel.js';
 
 describe('User Model Tests', () => {

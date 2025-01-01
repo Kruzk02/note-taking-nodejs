@@ -1,4 +1,4 @@
-export async function getRequestBody(req) {
+export default async function getRequestBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', chunk => body += chunk.toString());

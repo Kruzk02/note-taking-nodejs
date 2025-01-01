@@ -14,7 +14,7 @@ services:
     environment:
       - NODE_ENV=development
       - MONGO_URI=mongodb://mongo:27017/mydb
-    command: nodemon -L index.js
+    command: nodemon -L src/index.js
 
   mongo:
     container_name: mongodb
