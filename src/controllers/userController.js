@@ -16,7 +16,6 @@ export async function login(req, res) {
     res.writeHead(200, {"Content-Type" : "application/json"});
     res.end(JSON.stringify({ message: "Login successful", user: safeUser }));
   } catch (err) {
-    console.error('Error during login:', err);
     res.writeHead(500, {"Content-Type" : "application/json"});
     res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
   }

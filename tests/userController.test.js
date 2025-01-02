@@ -31,15 +31,14 @@ describe('User Controller', () => {
 
       await login(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(401);
+      expect(res.writeHead).toHaveBeenCalledWith(401, {"Content-Type" : "application/json"});
       expect(res.end).toHaveBeenCalledWith(
         JSON.stringify({ message: 'Invalid email or password' })
       );
     });
 
     it('should return 401 if password is incorrect', async () => {
-      const mockUser = { email: 'test@example.com', password: 'wrongpassword' };
-      User.findOne.mockResolvedValue(mockUser);
+      User.findOne.mockResolvedValue(null);
 
       const mockBody = { email: 'test@example.com', password: '123456' };
       import('../src/utils/requestBody.js').then(({ default: getRequestBody }) => {
@@ -48,26 +47,31 @@ describe('User Controller', () => {
 
       await login(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(401);
+      expect(res.writeHead).toHaveBeenCalledWith(401, {"Content-Type" : "application/json"});
       expect(res.end).toHaveBeenCalledWith(
         JSON.stringify({ message: 'Invalid email or password' })
       );
     });
 
     it('should return 200 if login is successful', async () => {
-      const mockUser = { email: 'test@example.com', password: '123456' };
+      const mockUser = {
+        email: 'test@example.com',
+        password: '123456',
+        comparePassword: vi.fn().mockResolvedValue(true),
+        toObject: vi.fn().mockReturnValue({ email: 'test@example.com' }),
+      };
       User.findOne.mockResolvedValue(mockUser);
 
       const mockBody = { email: 'test@example.com', password: '123456' };
       import('../src/utils/requestBody.js').then(({ default: getRequestBody }) => {
         getRequestBody.mockResolvedValue(mockBody);
       });
-
+      
       await login(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(200);
+      expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type" : "application/json" });
       expect(res.end).toHaveBeenCalledWith(
-        JSON.stringify({ message: 'Login successful', user: mockUser })
+        JSON.stringify({ message: 'Login successful', user: { email : mockUser.email } })
       );
     });
   });
@@ -83,7 +87,7 @@ describe('User Controller', () => {
 
       await register(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(400);
+      expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type" : "application/json" });
       expect(res.end).toHaveBeenCalledWith(
         JSON.stringify({ message: 'Email already taken' })
       );
@@ -102,7 +106,7 @@ describe('User Controller', () => {
       await register(req, res);
 
       expect(mockUser.save).toHaveBeenCalled();
-      expect(res.writeHead).toHaveBeenCalledWith(201);
+      expect(res.writeHead).toHaveBeenCalledWith(201, {"Content-Type" : "application/json"});
       expect(res.end).toHaveBeenCalledWith(
         JSON.stringify({ message: 'User registered successfully', user: mockUser })
       );
