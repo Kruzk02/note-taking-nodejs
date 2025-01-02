@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { login, register, getRequestBody } from '../src/controllers/userController.js';
 import User from '../src/models/userModel.js';
+import jsonwebtoken from 'jsonwebtoken';
 
 vi.mock('../src/models/userModel.js');
 
@@ -66,12 +67,23 @@ describe('User Controller', () => {
       import('../src/utils/requestBody.js').then(({ default: getRequestBody }) => {
         getRequestBody.mockResolvedValue(mockBody);
       });
-      
+
+      if (!process.env.JWT_SECRET_KEY) {
+        process.env.JWT_SECRET_KEY = "VERYSECRETKEY";
+      }
+      let jwtSecretKey = process.env.JWT_SECRET_KEY;
+
+      let data = {
+        time: Date(),
+        username: mockUser.username
+      }
+
+      const token = jsonwebtoken.sign(data, jwtSecretKey);
       await login(req, res);
 
       expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type" : "application/json" });
       expect(res.end).toHaveBeenCalledWith(
-        JSON.stringify({ message: 'Login successful', user: { email : mockUser.email } })
+        JSON.stringify({ message: 'Login successful', token})
       );
     });
   });
