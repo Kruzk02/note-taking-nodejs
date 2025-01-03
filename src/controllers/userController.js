@@ -14,24 +14,14 @@ export async function login(req, res) {
     }
 
     const { password: _, ...safeUser } = user.toObject();
-    if (!process.env.JWT_SECRET_KEY) {
-      process.env.JWT_SECRET_KEY = "VERYSECRETKEY";
-    }
 
     let jwtSecretKey = process.env.JWT_SECRET_KEY;
 
-    if (!jwtSecretKey) {
-      res.writeHead(500, {"Content-Type" : "application/json"});
-      return res.end(JSON.stringify({ message: "JWT_SECRET_KEY is not defined" }));
-    }
-
     let data = {
       time: Date(),
-      userId: safeUser.id,
       username: safeUser.username
     }
-
-    const token = jsonwebtoken.sign(data, jwtSecretKey);
+    const token = jsonwebtoken.sign(data, jwtSecretKey, { expiresIn: '1h'});
 
     res.writeHead(200, {"Content-Type" : "application/json"});
     res.end(JSON.stringify({ message: "Login successful", token}));
@@ -60,5 +50,34 @@ export async function register(req, res) {
   } catch (err) {
     res.writeHead(500, {"Content-Type" : "application/json"});
     res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+  }
+}
+
+export async function getUserDetails(req, res) {
+  try {
+    let jwtSecretKey = process.env.JWT_SECRET_KEY;
+
+    const authHeader = req.headers['authorization'];
+    if (!authHeader) {
+      res.writeHead(400, {"Content-Type" : "application/json"});
+      res.end(JSON.stringify("Authorzation header missing"));
+      return;
+    }
+
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+      res.writeHead(400, {"Content-Type" : 'application/json'});
+      res.end(JSON.stringify({ message : "Token missing"}));
+      return;
+    }
+
+    const decoded = jsonwebtoken.verify(token, jwtSecretKey);
+    const { username } = decoded;
+    
+    res.writeHead(200, {"Content-Type" : "application/json"});
+    res.end(JSON.stringify({ username }))
+  } catch (err) {
+    res.writeHead(500, {"Content-Type" : "application/json"});
+    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message}));
   }
 }

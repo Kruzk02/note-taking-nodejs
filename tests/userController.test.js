@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { login, register, getRequestBody } from '../src/controllers/userController.js';
+import { login, register, getUserDetails } from '../src/controllers/userController.js';
 import User from '../src/models/userModel.js';
 import jsonwebtoken from 'jsonwebtoken';
 
@@ -56,6 +56,7 @@ describe('User Controller', () => {
 
     it('should return 200 if login is successful', async () => {
       const mockUser = {
+        id: '123aaabbb',
         email: 'test@example.com',
         password: '123456',
         comparePassword: vi.fn().mockResolvedValue(true),
@@ -78,7 +79,7 @@ describe('User Controller', () => {
         username: mockUser.username
       }
 
-      const token = jsonwebtoken.sign(data, jwtSecretKey);
+      const token = jsonwebtoken.sign(data, jwtSecretKey, {expiresIn: '1h'});
       await login(req, res);
 
       expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type" : "application/json" });
@@ -122,6 +123,49 @@ describe('User Controller', () => {
       expect(res.end).toHaveBeenCalledWith(
         JSON.stringify({ message: 'User registered successfully', user: mockUser })
       );
+    });
+  });
+
+  describe('getUserDetails', () => {
+    it('should return 400 if authorization header is missing', async () => {
+      const req = { headers: {} };
+      const res = {
+        writeHead: vi.fn(),
+        end: vi.fn(),
+      };
+
+      await getUserDetails(req, res);
+
+      expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type": "application/json" });
+      expect(res.end).toHaveBeenCalledWith(JSON.stringify("Authorzation header missing"));
+    });
+
+    it('should return 400 if token is missing', async () => {
+      const req = { headers: { authorization: `Bearer `} };
+      const res = {
+        writeHead: vi.fn(),
+        end: vi.fn(),
+      };
+
+      await getUserDetails(req, res);
+
+      expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type": "application/json" });
+      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: "Token missing" }));
+    });
+
+    it('should return 200 with the username if token is valid', async () => {
+      const req = { headers: { authorization : `Bearer validToken`} };
+      const res = {
+        writeHead: vi.fn(),
+        end: vi.fn(),
+      };
+      const decodedToken = { username: 'testUser' };
+      vi.spyOn(jsonwebtoken, 'verify').mockReturnValue(decodedToken);
+
+      await getUserDetails(req, res);
+
+      expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type": "application/json" });
+      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ username: 'testUser' }));    
     });
   });
 });
