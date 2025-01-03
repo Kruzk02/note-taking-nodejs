@@ -137,7 +137,7 @@ describe('User Controller', () => {
       await getUserDetails(req, res);
 
       expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type": "application/json" });
-      expect(res.end).toHaveBeenCalledWith(JSON.stringify("Authorzation header missing"));
+      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: "Authorization header missing", error: null}));
     });
 
     it('should return 400 if token is missing', async () => {
@@ -150,7 +150,7 @@ describe('User Controller', () => {
       await getUserDetails(req, res);
 
       expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type": "application/json" });
-      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: "Token missing" }));
+      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: "Token missing", error: null }));
     });
 
     it('should return 200 with the username if token is valid', async () => {

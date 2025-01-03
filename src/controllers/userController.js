@@ -1,5 +1,6 @@
 import User from '../models/userModel.js';
 import getRequestBody from "../utils/requestBody.js";
+import { extractTokenFromHeader } from "../utils/JwtUtil.js";
 import jsonwebtoken from 'jsonwebtoken';
 
 export async function login(req, res) {
@@ -55,29 +56,16 @@ export async function register(req, res) {
 
 export async function getUserDetails(req, res) {
   try {
-    let jwtSecretKey = process.env.JWT_SECRET_KEY;
-
-    const authHeader = req.headers['authorization'];
-    if (!authHeader) {
-      res.writeHead(400, {"Content-Type" : "application/json"});
-      res.end(JSON.stringify("Authorzation header missing"));
-      return;
-    }
-
-    const token = authHeader.split(' ')[1];
-    if (!token) {
-      res.writeHead(400, {"Content-Type" : 'application/json'});
-      res.end(JSON.stringify({ message : "Token missing"}));
-      return;
-    }
-
-    const decoded = jsonwebtoken.verify(token, jwtSecretKey);
+    const decoded = extractTokenFromHeader(req);
     const { username } = decoded;
-    
-    res.writeHead(200, {"Content-Type" : "application/json"});
-    res.end(JSON.stringify({ username }))
+
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ username }));
   } catch (err) {
-    res.writeHead(500, {"Content-Type" : "application/json"});
-    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message}));
+    const statusCode = err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+
+    res.writeHead(statusCode, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ message, error: err.details || null }));
   }
 }
