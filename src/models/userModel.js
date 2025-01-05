@@ -23,7 +23,10 @@ const userSchema = new mongoose.Schema(
       minlength: [6, 'password should be more than 6 characters'], 
       maxlength: [128, 'password should be less than 128 characters']
     },
-    picture: { type: String }
+    picture: { 
+      type: String,
+      default: "profile_picture/default_profile_picture.png"
+    }
   },
   { timestamps: true }
 );
