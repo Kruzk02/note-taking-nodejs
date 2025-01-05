@@ -1,4 +1,4 @@
-import { login, register, getUserDetails } from '../controllers/userController.js'
+import { login, register, getUserDetails, getUserProfilePicture } from '../controllers/userController.js'
 
 export default function userRoute(req, res) {
   if (req.method === "POST" && req.url === "/api/v1/login") {
@@ -7,6 +7,8 @@ export default function userRoute(req, res) {
     register(req, res);
   } else if (req.method === "GET" && req.url === "/api/v1/users/details") {
     getUserDetails(req, res);
+  } else if (req.method === "GET" && req.url === "/api/v1/users/photo") {
+    getUserProfilePicture(req, res);
   }else {
     res.writeHead(404);
     res.end(JSON.stringify({ message: "Not Found" }));
