@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { login, register, getUserDetails } from '../src/controllers/userController.js';
+import { login, register, getUserDetails, update } from '../src/controllers/userController.js';
 import User from '../src/models/userModel.js';
 import jsonwebtoken from 'jsonwebtoken';
 
@@ -166,6 +166,31 @@ describe('User Controller', () => {
 
       expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type": "application/json" });
       expect(res.end).toHaveBeenCalledWith(JSON.stringify({ username: 'testUser' }));    
+    });
+  });
+
+  describe("update", () => {
+    it("should return 404 if user is not found", async () => {
+      const mockReq = {
+        headers: { authorization: "Bearer mockToken" },
+      };
+      const mockRes = {
+        writeHead: vi.fn(),
+        end: vi.fn(),
+      };
+
+      import('../src/utils/requestBody.js').then(({ default: getRequestBody }) => {
+        getRequestBody.mockResolvedValue(null);
+      });
+      const decodedToken = { username: 'nonexistentUser' };
+      vi.spyOn(jsonwebtoken, 'verify').mockReturnValue(decodedToken);
+      User.findOne.mockResolvedValue(null);
+
+      await update(mockReq, mockRes);
+
+      expect(User.findOne).toHaveBeenCalledWith({ username: "nonexistentUser" });
+      expect(mockRes.writeHead).toHaveBeenCalledWith(404, { "Content-Type": "application/json" });
+      expect(mockRes.end).toHaveBeenCalledWith(JSON.stringify({ message: "User not found" }));
     });
   });
 });

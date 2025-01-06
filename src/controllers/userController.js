@@ -55,6 +55,39 @@ export async function register(req, res) {
   }
 }
 
+//TODO: add utils to save file and get form-data request.
+export async function update(req, res) {
+  try {
+    const body = await getRequestBody(req);
+    const { newUsername, newEmail, newPassword } = body;
+    
+    const decoded = extractTokenFromHeader(req);
+    const { username } = decoded;
+  
+    const user = await User.findOne({ username });
+    
+    if (!user) {
+      res.writeHead(404, {"Content-Type" : "application/json"});
+      res.end(JSON.stringify({ message: "User not found"}));
+    }
+
+    if (newUsername) user.username = newUsername;
+    if (newEmail) user.email = newEmail;
+    if (newPassword) user.password = newPassword;
+    //if (newPicture) user.picture = newPicture;
+
+    const updateUser = await user.save();
+    res.writeHead(200, {"Content-Type" : "application/json"});
+    res.end(JSON.stringify(updateUser));
+  } catch (err) {
+    const statusCode = err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
+
+    res.writeHead(statusCode, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ message, error: err.details || null }));
+  }
+}
+
 export async function getUserDetails(req, res) {
   try {
     const decoded = extractTokenFromHeader(req);
