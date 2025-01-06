@@ -1,10 +1,8 @@
 import User from '../models/userModel.js';
 import getRequestBody from "../utils/requestBody.js";
 import { extractTokenFromHeader } from "../utils/JwtUtil.js";
+import { getFile, getExtension, readFile } from '../utils/MediaUtils.js';
 import jsonwebtoken from 'jsonwebtoken';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 
 export async function login(req, res) {
   try {
@@ -77,34 +75,33 @@ export async function getUserProfilePicture(req, res) {
   try {
     const decoded = extractTokenFromHeader(req);
     const { username } = decoded;
-    
-    const user = await User.findOne({ username }).select('picture');
+
+    const user = await User.findOne({ username }).select("picture");
     if (!user) {
-      res.writeHead(404, { "Content-Type" : "application/json"});
-      return res.end(JSON.stringify({ message : "User not found" }));
+      res.writeHead(404, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ message: "User not found" }));
     }
-    const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename);
-    const filePath = path.resolve(__dirname, "../../", user.picture);
-    const extension = path.extname(user.picture).toLowerCase();
+
+    const filePath = getFile(user.picture);
+    const extension = getExtension(user.picture);
 
     let contentType = "image/png";    
-    if (extension === '.jpg' || extension === '.jpeg') {
+    if (extension === ".jpg" || extension === ".jpeg") {
       contentType = "image/jpeg";
-    } else if (extension === '.gif') {
+    } else if (extension === ".gif") {
       contentType = "image/gif";
     }
 
-    res.writeHead(200, { "Content-Type" : contentType });
-    fs.readFile(filePath, function (err, content) {
-      if (err) {
-        res.writeHead(500, { "Content-Type" : "application/json" });
-        res.end(JSON.strinfiy({ message : "Error reading file", error: err.message}))
-      }
+    try {
+      const content = await readFile(filePath);
+      res.writeHead(200, { "Content-Type": contentType });
       res.end(content);
-    });
-  } catch(err) {
-    res.writeHead(500, {"Content-Type" : "application/json"});
+    } catch (err) {
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ message: "Error reading file", error: err.message }));
+    }
+  } catch (err) {
+    res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
   }
 }
