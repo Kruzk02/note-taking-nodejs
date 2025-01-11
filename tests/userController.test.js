@@ -2,12 +2,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { login, register, getUserDetails, update } from '../src/controllers/userController.js';
 import User from '../src/models/userModel.js';
 import jsonwebtoken from 'jsonwebtoken';
+import * as formidable from 'formidable';
+import * as fs from 'fs';
 
 vi.mock('../src/models/userModel.js');
 
 vi.mock('../src/utils/requestBody.js', () => ({
 __esModule: true,
   default: vi.fn().mockResolvedValue({ email: 'test@example.com', password: '123456' }), 
+}));
+
+vi.mock('fs');
+
+vi.mock('formidable', () => ({
+  default: vi.fn(),
 }));
 
 describe('User Controller', () => {
@@ -170,27 +178,64 @@ describe('User Controller', () => {
   });
 
   describe("update", () => {
-    it("should return 404 if user is not found", async () => {
-      const mockReq = {
-        headers: { authorization: "Bearer mockToken" },
+    it('should return 400 if form parsing fails', async () => {
+      const req = { headers: {}, body: {} };
+      const res = { writeHead: vi.fn(), end: vi.fn() };
+
+      vi.spyOn(formidable, 'default').mockImplementationOnce(() => ({
+        parse: (req, callback) => callback(new Error('Parsing Error'))
+      }));
+
+      await update(req, res);
+
+      expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type": "application/json" });
+      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: 'Error parsing form data' }));
+    });
+
+    it('should update user if all fields are valid', async () => {
+      const req = {
+        headers: {
+          authorization: 'Bearer fake_token'
+        },
+        body: {},
       };
-      const mockRes = {
-        writeHead: vi.fn(),
-        end: vi.fn(),
-      };
+      const res = { writeHead: vi.fn(), end: vi.fn() };
 
-      import('../src/utils/requestBody.js').then(({ default: getRequestBody }) => {
-        getRequestBody.mockResolvedValue(null);
-      });
-      const decodedToken = { username: 'nonexistentUser' };
-      vi.spyOn(jsonwebtoken, 'verify').mockReturnValue(decodedToken);
-      User.findOne.mockResolvedValue(null);
+      const fields = { newUsername: 'newUsername', newEmail: 'newEmail@example.com', newPassword: 'newPassword' };
+      const files = { picture: [{ filepath: '../uploads/profile_picture/default_profile_picture.png', originalFilename: 'default_profile_picture.jpg' }] };
 
-      await update(mockReq, mockRes);
+      vi.spyOn(formidable, 'default').mockImplementationOnce(() => ({
+        parse: (req, callback) => callback(null, fields, files)
+      }));
 
-      expect(User.findOne).toHaveBeenCalledWith({ username: "nonexistentUser" });
-      expect(mockRes.writeHead).toHaveBeenCalledWith(404, { "Content-Type": "application/json" });
-      expect(mockRes.end).toHaveBeenCalledWith(JSON.stringify({ message: "User not found" }));
+      fs.existsSync.mockReturnValueOnce(false);
+      fs.mkdirSync.mockImplementationOnce(() => {});
+      fs.renameSync.mockImplementationOnce(() => {});
+
+      const fakeUser = { username: 'oldUsername', email: 'oldEmail@example.com', save: vi.fn().mockResolvedValueOnce({ username: 'newUsername' }) };
+      vi.spyOn(User, 'findOne').mockResolvedValueOnce(fakeUser);
+
+      await update(req, res);
+
+      expect(fakeUser.save).toHaveBeenCalled();
+    });
+    it('should return 404 if user not found', async () => {
+      const req = { headers: { authorization: "Bearer mockToken"}, body: {} };
+      const res = { writeHead: vi.fn(), end: vi.fn() };
+
+      const fields = { newUsername: 'newUsername', newEmail: 'newEmail@example.com', newPassword: 'newPassword' };
+      const files = {};
+
+      vi.spyOn(formidable, 'default').mockImplementationOnce(() => ({
+        parse: (req, callback) => callback(null, fields, files)
+      }));
+
+      vi.spyOn(User, 'findOne').mockResolvedValueOnce(null);
+
+      await update(req, res);
+
+      expect(res.writeHead).toHaveBeenCalledWith(404, { "Content-Type": "application/json" });
+      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: 'User not found' }));
     });
   });
 });
