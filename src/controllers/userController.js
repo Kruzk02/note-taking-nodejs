@@ -3,6 +3,9 @@ import getRequestBody from "../utils/requestBody.js";
 import { extractTokenFromHeader } from "../utils/JwtUtil.js";
 import { getFile, getExtension, readFile } from '../utils/MediaUtils.js';
 import jsonwebtoken from 'jsonwebtoken';
+import formidable from "formidable";
+import path from "path";
+import fs from 'fs'
 
 export async function login(req, res) {
   try {
@@ -55,37 +58,65 @@ export async function register(req, res) {
   }
 }
 
-//TODO: add utils to save file and get form-data request.
 export async function update(req, res) {
-  try {
-    const body = await getRequestBody(req);
-    const { newUsername, newEmail, newPassword } = body;
-    
-    const decoded = extractTokenFromHeader(req);
-    const { username } = decoded;
-  
-    const user = await User.findOne({ username });
-    
-    if (!user) {
-      res.writeHead(404, {"Content-Type" : "application/json"});
-      res.end(JSON.stringify({ message: "User not found"}));
+  const form = formidable({
+    uploadDir: path.join(process.cwd(), "uploads"),
+    keepExtensions: true,
+    filename: (name, ext, part, form) => {
+      return `${name}-${Date.now()}${ext}`;
+    },
+  });
+
+  form.parse(req, async (err, fields, files) => {
+    try {
+      if (err) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "Error parsing form data" }));
+      }
+
+      const { newUsername, newEmail, newPassword } = fields;
+      let newPicture = null;
+
+      if (files.picture && files.picture[0]) {
+        const tempPath = files.picture[0].filepath;
+        const ext = path.extname(files.picture[0].originalFilename);
+        newPicture = `profile_picture/${Date.now()}${ext}`;
+        
+        const dirPath = path.join(process.cwd(), "uploads", "profile_picture");
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: true});
+        }
+
+        const permanentPath = path.join(process.cwd(), "uploads", newPicture);
+        fs.renameSync(tempPath, permanentPath);
+      }
+
+      const decoded = extractTokenFromHeader(req);
+      const { username } = decoded;
+
+      const user = await User.findOne({ username });
+
+      if (!user) {
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "User not found" }));
+      }
+
+      if (newUsername) user.username = newUsername;
+      if (newEmail) user.email = newEmail;
+      if (newPassword) user.password = newPassword;
+      if (newPicture) user.picture = newPicture;
+
+      const updatedUser = await user.save();
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify(updatedUser));
+    } catch (err) {
+      const statusCode = err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+
+      res.writeHead(statusCode, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ message, error: err.details || null }));
     }
-
-    if (newUsername) user.username = newUsername;
-    if (newEmail) user.email = newEmail;
-    if (newPassword) user.password = newPassword;
-    //if (newPicture) user.picture = newPicture;
-
-    const updateUser = await user.save();
-    res.writeHead(200, {"Content-Type" : "application/json"});
-    res.end(JSON.stringify(updateUser));
-  } catch (err) {
-    const statusCode = err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-
-    res.writeHead(statusCode, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message, error: err.details || null }));
-  }
+  });
 }
 
 export async function getUserDetails(req, res) {
