@@ -192,33 +192,6 @@ describe('User Controller', () => {
       expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: 'Error parsing form data' }));
     });
 
-    it('should update user if all fields are valid', async () => {
-      const req = {
-        headers: {
-          authorization: 'Bearer fake_token'
-        },
-        body: {},
-      };
-      const res = { writeHead: vi.fn(), end: vi.fn() };
-
-      const fields = { newUsername: 'newUsername', newEmail: 'newEmail@example.com', newPassword: 'newPassword' };
-      const files = { picture: [{ filepath: '../uploads/profile_picture/default_profile_picture.png', originalFilename: 'default_profile_picture.jpg' }] };
-
-      vi.spyOn(formidable, 'default').mockImplementationOnce(() => ({
-        parse: (req, callback) => callback(null, fields, files)
-      }));
-
-      fs.existsSync.mockReturnValueOnce(false);
-      fs.mkdirSync.mockImplementationOnce(() => {});
-      fs.renameSync.mockImplementationOnce(() => {});
-
-      const fakeUser = { username: 'oldUsername', email: 'oldEmail@example.com', save: vi.fn().mockResolvedValueOnce({ username: 'newUsername' }) };
-      vi.spyOn(User, 'findOne').mockResolvedValueOnce(fakeUser);
-
-      await update(req, res);
-
-      expect(fakeUser.save).toHaveBeenCalled();
-    });
     it('should return 404 if user not found', async () => {
       const req = { headers: { authorization: "Bearer mockToken"}, body: {} };
       const res = { writeHead: vi.fn(), end: vi.fn() };

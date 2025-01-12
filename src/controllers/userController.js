@@ -77,20 +77,6 @@ export async function update(req, res) {
       const { newUsername, newEmail, newPassword } = fields;
       let newPicture = null;
 
-      if (files.picture && files.picture[0]) {
-        const tempPath = files.picture[0].filepath;
-        const ext = path.extname(files.picture[0].originalFilename);
-        newPicture = `profile_picture/${Date.now()}${ext}`;
-        
-        const dirPath = path.join(process.cwd(), "uploads", "profile_picture");
-        if (!fs.existsSync(dirPath)) {
-          fs.mkdirSync(dirPath, { recursive: true});
-        }
-
-        const permanentPath = path.join(process.cwd(), "uploads", newPicture);
-        fs.renameSync(tempPath, permanentPath);
-      }
-
       const decoded = extractTokenFromHeader(req);
       const { username } = decoded;
 
@@ -101,6 +87,46 @@ export async function update(req, res) {
         return res.end(JSON.stringify({ message: "User not found" }));
       }
 
+      if (files.picture && files.picture[0]) {
+
+        const tempPath = files.picture[0].filepath;
+        const ext = path.extname(files.picture[0].originalFilename.toLowerCase());
+        
+        if (ext !== ".jpg" && ext !== ".png" && ext !== ".jpeg" && ext !== ".gif") {
+          fs.unlink(tempPath, (err) => {
+            if (err) {
+              console.log(`${tempPath} was deleted`);
+            }
+          });
+          res.writeHead(400, { "Content-Type" : "application/json"});
+          return res.end(JSON.stringify({ message: "File not support"}));
+        } 
+
+        newPicture = `profile_picture/${Date.now()}${ext}`;
+        
+        const dirPath = path.join(process.cwd(), "uploads", "profile_picture");
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: true});
+        }
+        
+        const oldFilePath = path.join(process.cwd(), "uploads", user.picture);
+        const permanentPath = path.join(process.cwd(), "uploads", newPicture);
+        
+        console.log(`Old file path: ${oldFilePath}`);
+        console.log(`New file path: ${permanentPath}`)
+        console.log(`temp path: ${tempPath}`)
+        fs.rename(tempPath, permanentPath, (err) => {
+          if (err) {
+            console.error('Error replacing file:', err);
+          }
+        });
+        fs.rename(oldFilePath, permanentPath, (err) => {
+          if (err) {
+            console.error('Error replacing file:', err);
+          } 
+        });
+      }
+      
       if (newUsername) user.username = newUsername;
       if (newEmail) user.email = newEmail;
       if (newPassword) user.password = newPassword;
