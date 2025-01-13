@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 export function getFile(filename) {
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
-  return path.resolve(__dirname, "../../", filename); 
+  return path.resolve(__dirname, "../../uploads/", filename); 
 }
 
 export function getExtension(filename) {
