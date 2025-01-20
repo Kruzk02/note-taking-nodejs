@@ -168,12 +168,21 @@ describe('User Controller', () => {
         end: vi.fn(),
       };
       const decodedToken = { username: 'testUser' };
+      const mockUser = { username: 'testUser', email: 'test@example.com', password: '123456', toObject: function () {
+          const { password, ...safeUser } = this; 
+          return safeUser;
+        },
+      };
       vi.spyOn(jsonwebtoken, 'verify').mockReturnValue(decodedToken);
+      vi.spyOn(User, 'findOne').mockResolvedValue(mockUser);
 
-      await getUserDetails(req, res);
-
+      await getUserDetails(req, res); 
+      const expectedUser = {
+        username: 'testUser',
+        email: 'test@example.com',
+      };
       expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type": "application/json" });
-      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ username: 'testUser' }));    
+      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ user: expectedUser }));  
     });
   });
 

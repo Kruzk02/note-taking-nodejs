@@ -1,11 +1,12 @@
 import User from '../models/userModel.js';
 import getRequestBody from "../utils/requestBody.js";
 import { extractTokenFromHeader } from "../utils/JwtUtil.js";
-import { getFile, getExtension, readFile } from '../utils/MediaUtils.js';
 import jsonwebtoken from 'jsonwebtoken';
 import formidable from "formidable";
 import path from "path";
 import fs from 'fs'
+import { stat, readFile } from 'fs/promises';
+import { fileURLToPath } from 'url';
 
 export async function login(req, res) {
   try {
@@ -18,13 +19,11 @@ export async function login(req, res) {
       return res.end(JSON.stringify({ message: "Invalid email or password" }));
     }
 
-    const { password: _, ...safeUser } = user.toObject();
-
     let jwtSecretKey = process.env.JWT_SECRET_KEY;
 
     let data = {
       time: Date(),
-      username: safeUser.username
+      username: user.username
     }
     const token = jsonwebtoken.sign(data, jwtSecretKey, { expiresIn: '1h'});
 
@@ -90,12 +89,22 @@ export async function update(req, res) {
       if (files.picture && files.picture[0]) {
 
         const tempPath = files.picture[0].filepath;
+        const stats = await stat(tempPath);
+        if (stats.size > 2147483648) {
+          fs.unlink(tempPath, (err) => {
+            if (err) {
+              console.log(`${err.message}`);
+            }
+          });
+          res.writeHead(400, { "Content-Type" : "application/json"});
+          return res.end(JSON.stringify({ message: "File large than 2gb" }));
+        }
         const ext = path.extname(files.picture[0].originalFilename.toLowerCase());
         
         if (ext !== ".jpg" && ext !== ".png" && ext !== ".jpeg" && ext !== ".gif") {
           fs.unlink(tempPath, (err) => {
             if (err) {
-              console.log(`${tempPath} was deleted`);
+              console.log(`${err.message}`);
             }
           });
           res.writeHead(400, { "Content-Type" : "application/json"});
@@ -112,9 +121,6 @@ export async function update(req, res) {
         const oldFilePath = path.join(process.cwd(), "uploads", user.picture);
         const permanentPath = path.join(process.cwd(), "uploads", newPicture);
         
-        console.log(`Old file path: ${oldFilePath}`);
-        console.log(`New file path: ${permanentPath}`)
-        console.log(`temp path: ${tempPath}`)
         fs.rename(tempPath, permanentPath, (err) => {
           if (err) {
             console.error('Error replacing file:', err);
@@ -149,9 +155,12 @@ export async function getUserDetails(req, res) {
   try {
     const decoded = extractTokenFromHeader(req);
     const { username } = decoded;
+    
+    const user = await User.findOne({ username });
+    const { password: _, ...safeUser } = user.toObject();
 
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ username }));
+    res.end(JSON.stringify({ user: safeUser }));
   } catch (err) {
     const statusCode = err.statusCode || 500;
     const message = err.message || "Internal Server Error";
@@ -171,9 +180,11 @@ export async function getUserProfilePicture(req, res) {
       res.writeHead(404, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: "User not found" }));
     }
-
-    const filePath = getFile(user.picture);
-    const extension = getExtension(user.picture);
+    
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename); 
+    const filePath = path.resolve(__dirname,"../../uploads/",user.picture);
+    const extension = path.extname(user.picture).toLowerCase();
 
     let contentType = "image/png";    
     if (extension === ".jpg" || extension === ".jpeg") {
