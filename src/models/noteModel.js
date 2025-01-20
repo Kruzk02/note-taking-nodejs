@@ -1,4 +1,4 @@
-const mongoose = require('mongoose');
+import mongoose from 'mongoose';
 
 const noteSchema = new mongoose.Schema({
   title: {
@@ -18,6 +18,11 @@ const noteSchema = new mongoose.Schema({
     type: String,
     default: ""
   },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    require: true
+  },
   createdAt: {
     type: Date,
     default: Date.now
@@ -33,6 +38,5 @@ noteSchema.pre('save', function (next) {
 });
 
 const Note = mongoose.model('Note', noteSchema);
-
-module.exports = Note;
+export default Note;
 
