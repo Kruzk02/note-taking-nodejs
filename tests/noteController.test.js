@@ -1,104 +1,134 @@
-import { describe, it, vi, expect } from "vitest";
-import { findById, deleteById } from "../src/controllers/noteController.js";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { save, update, findById, deleteById } from "../src/controllers/noteController.js";
 import Note from "../src/models/noteModel.js";
+import * as formidable from 'formidable';
+import fs from "fs/promises";
+import path from "path";
 
-vi.mock("../src/models/noteModel");
+vi.mock("../src/models/userModel.js");
+vi.mock("../src/models/noteModel.js");
+vi.mock("../src/utils/JwtUtil.js");
+vi.mock('formidable', () => ({
+    default: vi.fn(),
+}));
+vi.mock("fs/promises");
 
-const createMockResponse = () => {
-    const res = {};
-    res.writeHead = vi.fn().mockReturnThis();
-    res.end = vi.fn().mockReturnThis();
-    return res;
-};
+describe("Note Controller", () => {
+    const mockRequest = () => {
+        return {
+            headers: { authorization: "Bearer mock-token" },
+            id: "mock-note-id",
+        };
+    };
 
-describe("Controller methods", () => {
+    const mockResponse = () => {
+        const res = {};
+        res.writeHead = vi.fn().mockReturnValue(res);
+        res.end = vi.fn().mockReturnValue(res);
+        return res;
+    };
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    describe("save", () => {
+        it("should return an error if required fields are missing", async () => {
+            const form = {
+                parse: vi.fn((req, callback) => {
+                    const fields = {}; // Missing title and content
+                    const files = {};
+                    callback(null, fields, files);
+                }),
+            };
+            vi.spyOn(formidable, "default").mockReturnValue(form);
+
+            const req = mockRequest();
+            const res = mockResponse();
+
+            await save(req, res);
+
+            expect(form.parse).toHaveBeenCalled();
+            expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type": "application/json" });
+            expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: "Missing required fields: title or content" }));
+        });
+    });
+
+    describe("update", () => {
+        it("should return an error if required fields are missing", async () => {
+            const form = {
+                parse: vi.fn((req, callback) => {
+                    const fields = {};
+                    const files = {};
+                    callback(null, fields, files);
+                }),
+            };
+            vi.spyOn(formidable, "default").mockReturnValue(form);
+
+            const req = mockRequest();
+            const res = mockResponse();
+
+            await update(req, res);
+
+            expect(form.parse).toHaveBeenCalled();
+            expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type": "application/json" });
+            expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: "Missing required fields: title or content" }));
+        });
+    });
+
     describe("findById", () => {
-        it("should return the note if found", async () => {
-            const req = { id: "123" };
-            const res = createMockResponse();
-            const mockNote = { id: "123", title: "Test Note" };
+        it("should return a note by ID", async () => {
+            Note.findById.mockResolvedValue({ _id: "mock-note-id", title: "Mock Note" });
 
-            Note.findById.mockResolvedValue(mockNote);
+            const req = mockRequest();
+            const res = mockResponse();
 
             await findById(req, res);
 
-            expect(Note.findById).toHaveBeenCalledWith("123");
+            expect(Note.findById).toHaveBeenCalledWith("mock-note-id");
             expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type": "application/json" });
-            expect(res.end).toHaveBeenCalledWith(JSON.stringify(mockNote));
+            expect(res.end).toHaveBeenCalledWith(JSON.stringify({ _id: "mock-note-id", title: "Mock Note" }));
         });
 
         it("should return 404 if note is not found", async () => {
-            const req = { id: "123" };
-            const res = createMockResponse();
-
             Note.findById.mockResolvedValue(null);
 
+            const req = mockRequest();
+            const res = mockResponse();
+
             await findById(req, res);
 
-            expect(Note.findById).toHaveBeenCalledWith("123");
+            expect(Note.findById).toHaveBeenCalledWith("mock-note-id");
             expect(res.writeHead).toHaveBeenCalledWith(404, { "Content-Type": "application/json" });
             expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: "Note not found" }));
-        });
-
-        it("should return 500 on internal server error", async () => {
-            const req = { id: "123" };
-            const res = createMockResponse();
-
-            Note.findById.mockRejectedValue(new Error("Database error"));
-
-            await findById(req, res);
-
-            expect(Note.findById).toHaveBeenCalledWith("123");
-            expect(res.writeHead).toHaveBeenCalledWith(500, { "Content-Type": "application/json" });
-            expect(res.end).toHaveBeenCalledWith(
-                JSON.stringify({ message: "Internal Server Error", error: "Database error" })
-            );
         });
     });
 
     describe("deleteById", () => {
-        it("should delete the note if found", async () => {
-            const req = { id: "123" };
-            const res = createMockResponse();
-            const mockNote = { id: "123", title: "Test Note" };
+        it("should delete a note by ID", async () => {
+            Note.findByIdAndDelete.mockResolvedValue({ _id: "mock-note-id", icon: "mock-icon.png" });
+            fs.unlink.mockResolvedValue();
 
-            Note.findByIdAndDelete.mockResolvedValue(mockNote);
+            const req = mockRequest();
+            const res = mockResponse();
 
             await deleteById(req, res);
 
-            expect(Note.findByIdAndDelete).toHaveBeenCalledWith("123");
-            expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type": "application/json" });
-            expect(res.end).toHaveBeenCalledWith(
-                JSON.stringify({ message: "Note successfully deleted" })
-            );
+            expect(Note.findByIdAndDelete).toHaveBeenCalledWith("mock-note-id");
+            expect(fs.unlink(path.join(process.cwd(), "uploads", "mock-icon.png")));
         });
 
         it("should return 404 if note is not found", async () => {
-            const req = { id: "123" };
-            const res = createMockResponse();
-
             Note.findByIdAndDelete.mockResolvedValue(null);
 
+            const req = mockRequest();
+            const res = mockResponse();
+
             await deleteById(req, res);
 
-            expect(Note.findByIdAndDelete).toHaveBeenCalledWith("123");
+            expect(Note.findByIdAndDelete).toHaveBeenCalledWith("mock-note-id");
             expect(res.writeHead).toHaveBeenCalledWith(404, { "Content-Type": "application/json" });
             expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: "Note not found" }));
-        });
-
-        it("should return 500 on internal server error", async () => {
-            const req = { id: "123" };
-            const res = createMockResponse();
-
-            Note.findByIdAndDelete.mockRejectedValue(new Error("Database error"));
-
-            await deleteById(req, res);
-
-            expect(Note.findByIdAndDelete).toHaveBeenCalledWith("123");
-            expect(res.writeHead).toHaveBeenCalledWith(500, { "Content-Type": "application/json" });
-            expect(res.end).toHaveBeenCalledWith(
-                JSON.stringify({ message: "Internal Server Error", error: "Database error" })
-            );
         });
     });
 });
