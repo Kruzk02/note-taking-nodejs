@@ -235,14 +235,43 @@ export async function findById(req, res) {
   }
 }
 
+export async function findByUser(req, res) {
+  try {
+    const decoded = extractTokenFromHeader(req);
+    const { username } = decoded;
+
+    const user = await User.findOne({username});
+    const note = await Note.find({ user: { $in: user.id } });
+    if (!note) {
+      res.writeHead(404, {"Content-Type": "application/json"});
+      return res.end(JSON.stringify({message: "Note not found"}));
+    }
+    res.writeHead(200, { "Content-Type": "application/json" });
+    return res.end(JSON.stringify(note));
+  } catch (err) {
+    res.writeHead(500, {"Content-Type" : "application/json"});
+    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+  }
+}
+
 export async function deleteById(req, res) {
   try {
-    const note = await Note.findByIdAndDelete(req.id);
+    const decoded = extractTokenFromHeader(req);
+    const { username } = decoded;
+    const user = await User.findOne({username});
+
+    const note = await Note.findById(req.id);
     if (!note) {
       res.writeHead(404, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: "Note not found" }));
     }
 
+    if (note.user.toString() !== user.id) {
+      res.writeHead(400, {"Content-Type": "application/json"});
+      return res.end(JSON.stringify({message: "Authenticated user not own the note"}));
+    }
+
+    await Note.deleteOne(note);
     await fs.promises.unlink(path.join(process.cwd(), "uploads", note.icon));
 
     res.writeHead(200, { "Content-Type": "application/json" });

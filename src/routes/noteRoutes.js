@@ -1,4 +1,4 @@
-import { save, update, findById, deleteById } from "../controllers/noteController.js";
+import {save, update, findById, deleteById, findByUser, findByTags} from "../controllers/noteController.js";
 import url from 'url';
 
 export default function noteRoutes(req, res) {
@@ -6,6 +6,8 @@ export default function noteRoutes(req, res) {
 
   if (req.method === "POST" && parseUrl.pathname === "/api/v1/notes") {
     save(req, res);
+  } else if (req.method === "GET" && parseUrl.pathname.startsWith("/api/v1/notes") && parseUrl.pathname.endsWith("/")) {
+    findByUser(req, res);
   } else if (req.method === "PUT" && parseUrl.pathname.startsWith("/api/v1/notes/")) {
     const id = parseUrl.pathname.split("/")[4];
     if (id) {
