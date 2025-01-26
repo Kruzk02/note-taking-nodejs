@@ -23,6 +23,16 @@ const userSchema = new mongoose.Schema(
       minlength: [6, 'password should be more than 6 characters'], 
       maxlength: [128, 'password should be less than 128 characters']
     },
+    role: {
+      type: String,
+      required: true,
+      default: 'user',
+    },
+    privilege: {
+      type: [String],
+      required: true,
+      default: ['READ', "WRITE"],
+    },
     picture: { 
       type: String,
       default: "uploads/profile_picture/default_profile_picture.png"
