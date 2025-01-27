@@ -1,4 +1,4 @@
-import {save, update, findById, deleteById, findByUser, findByTags} from "../controllers/noteController.js";
+import {save, update, findById, deleteById, findByUser} from "../controllers/noteController.js";
 import url from 'url';
 
 export default function noteRoutes(req, res) {

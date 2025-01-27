@@ -48,9 +48,9 @@ export async function save(req, res) {
       let icon = null;
 
       const decoded = extractTokenFromHeader(req);
-      const {username} = decoded;
+      const { username } = decoded;
 
-      const user = await User.findOne({username});
+      const user = await User.findOne({ username }).select("_id");
       if (!user) {
         res.writeHead(404, {"Content-Type": "application/json"});
         return res.end(JSON.stringify({message: "User not found"}));
@@ -100,7 +100,7 @@ export async function save(req, res) {
         content: cleanContent,
         tags: uniqueTags,
         icon,
-        user: user._id,
+        user: user.id,
       });
       const savedNote = await note.save();
 
@@ -150,12 +150,13 @@ export async function update(req, res) {
       }
 
       const decoded = extractTokenFromHeader(req);
-      const {username} = decoded;
-      const user = await User.findOne({username});
+      const { username } = decoded;
+      const user = await User.findOne({ username }).select("_id");
       if (!user) {
         res.writeHead(404, {"Content-Type": "application/json"});
         return res.end(JSON.stringify({message: "User not found"}));
       }
+
       if (existingNote.user.toString() !== user.id) {
         res.writeHead(400, {"Content-Type": "application/json"});
         return res.end(JSON.stringify({message: "User not matching with a note owner"}));
@@ -227,6 +228,7 @@ export async function findById(req, res) {
       res.writeHead(404, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: "Note not found" }));
     }
+
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(note));
   } catch (err) {
@@ -240,14 +242,21 @@ export async function findByUser(req, res) {
     const decoded = extractTokenFromHeader(req);
     const { username } = decoded;
 
-    const user = await User.findOne({username});
-    const note = await Note.find({ user: { $in: user.id } });
-    if (!note) {
+    const notes = await Note.find().populate({
+      path: 'user',
+      match: { username },
+      select: '_id',
+    })
+    .select('title content tags icon createdAt updatedAt')
+    .exec();
+    if (!notes) {
       res.writeHead(404, {"Content-Type": "application/json"});
       return res.end(JSON.stringify({message: "Note not found"}));
     }
+
+    const filteredNotes = notes.filter(note => note.user !== null);
     res.writeHead(200, { "Content-Type": "application/json" });
-    return res.end(JSON.stringify(note));
+    return res.end(JSON.stringify(filteredNotes));
   } catch (err) {
     res.writeHead(500, {"Content-Type" : "application/json"});
     res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
@@ -258,7 +267,7 @@ export async function deleteById(req, res) {
   try {
     const decoded = extractTokenFromHeader(req);
     const { username } = decoded;
-    const user = await User.findOne({username});
+    const user = await User.findOne({username}).select('_id');
 
     const note = await Note.findById(req.id);
     if (!note) {
