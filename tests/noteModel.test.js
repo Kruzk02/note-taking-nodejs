@@ -4,15 +4,11 @@ import Note from '../src/models/noteModel.js';
 describe('Note Model', () => {
   it('should create a new note', async () => {
     const mockSave = vi.fn().mockResolvedValue({
-      title: 'Test Note',
-      content: 'This is the content of the test note.',
-      tags: ['test', 'note'],
+      name: 'Test Note',
     });
 
     const noteData = {
-      title: 'Test Note',
-      content: 'This is the content of the test note.',
-      tags: ['test', 'note'],
+      name: 'Test Note',
     };
 
     const note = new Note(noteData);
@@ -20,8 +16,6 @@ describe('Note Model', () => {
     await note.save();
 
     expect(mockSave).toHaveBeenCalled();
-    expect(note.title).toBe(noteData.title);
-    expect(note.content).toBe(noteData.content);
-    expect(note.tags).toEqual(noteData.tags);
+    expect(note.name).toBe(noteData.name);
   });
 });

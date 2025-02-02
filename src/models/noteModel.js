@@ -1,23 +1,20 @@
 import mongoose from 'mongoose';
 
 const noteSchema = new mongoose.Schema({
-  title: {
-    type: String,
-    required: true, 
-    maxlength: 100 
-  },
-  content: {
+  name: {
     type: String,
     required: true,
-  },
-  tags: {
-    type: [String],
-    default: []
   },
   icon: {
     type: String,
     default: ""
   },
+  sections: [
+    {
+      type: mongoose.SchemaTypes.ObjectId,
+      ref: "Section"
+    }
+  ],
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -28,11 +25,12 @@ const noteSchema = new mongoose.Schema({
     default: Date.now
   },
   updatedAt: {
-    type: Date
+    type: Date,
+    default: Date.now
   }
 });
 
-noteSchema.pre('save', function (next) {
+noteSchema.pre('save', function(next) {
   this.updatedAt = new Date();
   next();
 });
