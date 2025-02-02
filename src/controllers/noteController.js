@@ -4,7 +4,7 @@ import { extractTokenFromHeader } from "../utils/JwtUtil.js";
 import formidable from "formidable";
 import path from "path";
 import fs from 'fs';
-import { stat, readFile } from 'fs/promises'
+import { stat } from 'fs/promises'
 
 
 
@@ -25,24 +25,21 @@ export async function save(req, res) {
       return `${name}-${Date.now()}${ext}`;
     },
   });
-  await form.parse(req, async (err, fields, files) => {
+  form.parse(req, async (err, fields, files) => {
     try {
       if (err) {
-        res.writeHead(400, {"Content-Type": "application/json"});
-        return res.end(JSON.stringify({message: "Error parsing form data"}));
+        res.writeHead(400, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "Error parsing form data" }));
       }
 
-      const {title, content, tags} = fields;
+      const { name } = fields;
 
-      const cleanTitle = Array.isArray(title) ? title[0] : title;
-      const cleanContent = Array.isArray(content) ? content[0] : content;
-      const cleanTags = Array.isArray(tags) ? tags : [tags];
+      const cleanName = Array.isArray(name) ? name[0] : name;
 
-      const uniqueTags = [...new Set(cleanTags)];
 
-      if (!cleanTitle || !cleanContent) {
-        res.writeHead(400, {"Content-Type": "application/json"});
-        return res.end(JSON.stringify({message: "Missing required fields: title or content"}));
+      if (!cleanName) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "Missing required fields: name" }));
       }
 
       let icon = null;
@@ -52,8 +49,8 @@ export async function save(req, res) {
 
       const user = await User.findOne({ username }).select("_id");
       if (!user) {
-        res.writeHead(404, {"Content-Type": "application/json"});
-        return res.end(JSON.stringify({message: "User not found"}));
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "User not found" }));
       }
 
       if (files.icon && files.icon[0]) {
@@ -61,8 +58,8 @@ export async function save(req, res) {
         const originFilename = files.icon[0].originalFilename || "";
 
         if (!originFilename) {
-          res.writeHead(400, {"Content-Type": "application/json"});
-          return res.end(JSON.stringify({message: "No valid file uploaded"}));
+          res.writeHead(400, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ message: "No valid file uploaded" }));
         }
 
         const stats = await stat(tempPath);
@@ -71,8 +68,8 @@ export async function save(req, res) {
           fs.unlink(tempPath, (unlinkErr) => {
             if (unlinkErr) console.error(`Error deleting file: ${unlinkErr.message}`);
           });
-          res.writeHead(400, {"Content-Type": "application/json"});
-          return res.end(JSON.stringify({message: "File larger than 2MB"}));
+          res.writeHead(400, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ message: "File larger than 2MB" }));
         }
 
         const ext = path.extname(originFilename).toLowerCase();
@@ -80,15 +77,15 @@ export async function save(req, res) {
           fs.unlink(tempPath, (unlinkErr) => {
             if (unlinkErr) console.error(`Error deleting file: ${unlinkErr.message}`);
           });
-          res.writeHead(400, {"Content-Type": "application/json"});
-          return res.end(JSON.stringify({message: "File type not supported"}));
+          res.writeHead(400, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ message: "File type not supported" }));
         }
 
         const uniqueName = generateRandomString(24);
         icon = `note-icon/${uniqueName}-${Date.now()}${ext}`;
 
         const dirPath = path.join(process.cwd(), "uploads", "note-icon");
-        fs.mkdirSync(dirPath, {recursive: true});
+        fs.mkdirSync(dirPath, { recursive: true });
 
         const permanentPath = path.join(process.cwd(), "uploads", icon);
         await fs.promises.copyFile(tempPath, permanentPath);
@@ -96,20 +93,18 @@ export async function save(req, res) {
       }
 
       const note = new Note({
-        title: cleanTitle,
-        content: cleanContent,
-        tags: uniqueTags,
+        name: cleanName,
         icon,
         user: user.id,
       });
       const savedNote = await note.save();
 
-      res.writeHead(201, {"Content-Type": "application/json"});
+      res.writeHead(201, { "Content-Type": "application/json" });
       return res.end(JSON.stringify(savedNote));
     } catch (err) {
       console.error(err);
-      res.writeHead(500, {"Content-Type": "application/json"});
-      res.end(JSON.stringify({message: "Internal Server Error", error: err.message}));
+      res.writeHead(500, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
     }
   });
 }
@@ -122,44 +117,40 @@ export async function update(req, res) {
       return `${name}-${Date.now()}${ext}`;
     },
   });
-  await form.parse(req, async (err, fields, files) => {
+  form.parse(req, async (err, fields, files) => {
     try {
       if (err) {
-        res.writeHead(400, {"Content-Type": "application/json"});
-        return res.end(JSON.stringify({message: "Error reading form data"}));
+        res.writeHead(400, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "Error reading form data" }));
       }
 
-      const {title, content, tags} = fields;
+      const { name } = fields;
 
-      const cleanTitle = Array.isArray(title) ? title[0] : title;
-      const cleanContent = Array.isArray(content) ? content[0] : content;
-      const cleanTags = Array.isArray(tags) ? tags : [tags];
+      const cleanName = Array.isArray(name) ? name[0] : name;
 
-      const uniqueTags = [...new Set(cleanTags)];
-
-      if (!cleanTitle || !cleanContent) {
-        res.writeHead(400, {"Content-Type": "application/json"});
-        return res.end(JSON.stringify({message: "Missing required fields: title or content"}));
+      if (!cleanName) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "Missing required fields: name" }));
       }
       let newIcon = null;
 
       const existingNote = await Note.findById(req.id);
       if (!existingNote) {
-        res.writeHead(404, {"Content-Type": "application/json"});
-        return res.end(JSON.stringify({message: "Note not found"}));
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "Note not found" }));
       }
 
       const decoded = extractTokenFromHeader(req);
       const { username } = decoded;
       const user = await User.findOne({ username }).select("_id");
       if (!user) {
-        res.writeHead(404, {"Content-Type": "application/json"});
-        return res.end(JSON.stringify({message: "User not found"}));
+        res.writeHead(404, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "User not found" }));
       }
 
       if (existingNote.user.toString() !== user.id) {
-        res.writeHead(400, {"Content-Type": "application/json"});
-        return res.end(JSON.stringify({message: "User not matching with a note owner"}));
+        res.writeHead(400, { "Content-Type": "application/json" });
+        return res.end(JSON.stringify({ message: "Authenticated user not own note" }));
       }
 
       if (files.icon && files.icon[0]) {
@@ -167,30 +158,30 @@ export async function update(req, res) {
         const originFilename = files.icon[0].originalFilename || "";
 
         if (!originFilename) {
-          res.writeHead(400, {"Content-Type": "application/json"});
-          return res.end(JSON.stringify({message: "No valid file uploaded"}));
+          res.writeHead(400, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ message: "No valid file uploaded" }));
         }
 
         const stats = await stat(tempPath);
 
         if (stats.size > 2000000) {
           await fs.promises.unlink(tempPath);
-          res.writeHead(400, {"Content-Type": "application/json"});
-          return res.end(JSON.stringify({message: "File larger than 2MB"}));
+          res.writeHead(400, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ message: "File larger than 2MB" }));
         }
 
         const ext = path.extname(originFilename).toLowerCase();
         if (![".jpg", ".png", ".jpeg", ".gif"].includes(ext)) {
           await fs.promises.unlink(tempPath);
-          res.writeHead(400, {"Content-Type": "application/json"});
-          return res.end(JSON.stringify({message: "File type not supported"}));
+          res.writeHead(400, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ message: "File type not supported" }));
         }
 
         const uniqueName = generateRandomString(24);
         newIcon = `note-icon/${uniqueName}-${Date.now()}${ext}`;
 
         const dirPath = path.join(process.cwd(), "uploads", "note-icon");
-        await fs.promises.mkdir(dirPath, {recursive: true});
+        await fs.promises.mkdir(dirPath, { recursive: true });
         const permanentPath = path.join(process.cwd(), "uploads", newIcon);
 
         await fs.promises.copyFile(tempPath, permanentPath);
@@ -202,21 +193,18 @@ export async function update(req, res) {
           await fs.promises.unlink(oldPath);
         }
 
-        if (cleanTitle) existingNote.title = cleanTitle;
-        if (cleanContent) existingNote.content = cleanContent;
-        if (uniqueTags) existingNote.tags = uniqueTags;
-        if (newIcon) existingNote.icon = newIcon;
+        if (cleanName) existingNote.name = cleanName;
 
         existingNote.updatedAt = Date.now();
         const updatedNote = await existingNote.save();
 
-        res.writeHead(202, {"Content-Type": "application/json"});
+        res.writeHead(202, { "Content-Type": "application/json" });
         return res.end(JSON.stringify(updatedNote));
       }
 
     } catch (err) {
-      res.writeHead(500, {"Content-Type": "application/json"});
-      return res.end(JSON.stringify({message: "Internal Server Error", error: err.message}));
+      res.writeHead(500, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
     }
   });
 }
@@ -247,18 +235,18 @@ export async function findByUser(req, res) {
       match: { username },
       select: '_id',
     })
-    .select('title content tags icon createdAt updatedAt')
-    .exec();
+      .select('title content tags icon createdAt updatedAt')
+      .exec();
     if (!notes) {
-      res.writeHead(404, {"Content-Type": "application/json"});
-      return res.end(JSON.stringify({message: "Note not found"}));
+      res.writeHead(404, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ message: "Note not found" }));
     }
 
     const filteredNotes = notes.filter(note => note.user !== null);
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(JSON.stringify(filteredNotes));
   } catch (err) {
-    res.writeHead(500, {"Content-Type" : "application/json"});
+    res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
   }
 }
@@ -267,7 +255,7 @@ export async function deleteById(req, res) {
   try {
     const decoded = extractTokenFromHeader(req);
     const { username } = decoded;
-    const user = await User.findOne({username}).select('_id');
+    const user = await User.findOne({ username }).select('_id');
 
     const note = await Note.findById(req.id);
     if (!note) {
@@ -276,8 +264,8 @@ export async function deleteById(req, res) {
     }
 
     if (note.user.toString() !== user.id) {
-      res.writeHead(400, {"Content-Type": "application/json"});
-      return res.end(JSON.stringify({message: "Authenticated user not own the note"}));
+      res.writeHead(400, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify({ message: "Authenticated user not own the note" }));
     }
 
     await Note.deleteOne(note);
