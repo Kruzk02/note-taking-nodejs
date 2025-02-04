@@ -6,8 +6,6 @@ import path from "path";
 import fs from 'fs';
 import { stat } from 'fs/promises'
 
-
-
 function generateRandomString(length) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
   let result = "";
@@ -194,11 +192,12 @@ export async function update(req, res) {
         }
 
         if (cleanName) existingNote.name = cleanName;
+        if (newIcon) existingNote.icon = newIcon;
 
         existingNote.updatedAt = Date.now();
         const updatedNote = await existingNote.save();
 
-        res.writeHead(202, { "Content-Type": "application/json" });
+        res.writeHead(200, { "Content-Type": "application/json" });
         return res.end(JSON.stringify(updatedNote));
       }
 
