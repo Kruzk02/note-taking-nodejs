@@ -19,7 +19,8 @@ export async function saveSection(req, res) {
     // Fetch Note from database
     const existingNote = await Note.findById(req.noteId);
     if (!existingNote) {
-      return res.writeHead(404, { "Content-Type": "application/json" }).end(
+      res.writeHead(404, { "Content-Type": "application/json" })
+      return res.end(
         JSON.stringify({ message: "Note not found" })
       );
     }
@@ -30,7 +31,8 @@ export async function saveSection(req, res) {
     // Fetch User from database
     const user = await User.findOne({ username }).select("_id");
     if (!user) {
-      return res.writeHead(404, { "Content-Type": "application/json" }).end(
+      res.writeHead(404, { "Content-Type": "application/json" })
+      return res.end(
         JSON.stringify({ message: "User not found" })
       );
     }

@@ -8,8 +8,8 @@ import * as fs from 'fs';
 vi.mock('../src/models/userModel.js');
 
 vi.mock('../src/utils/requestBody.js', () => ({
-__esModule: true,
-  default: vi.fn().mockResolvedValue({ email: 'test@example.com', password: '123456' }), 
+  __esModule: true,
+  default: vi.fn().mockResolvedValue({ email: 'test@example.com', password: '123456' }),
 }));
 
 vi.mock('fs');
@@ -40,7 +40,7 @@ describe('User Controller', () => {
 
       await login(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(401, {"Content-Type" : "application/json"});
+      expect(res.writeHead).toHaveBeenCalledWith(401, { "Content-Type": "application/json" });
       expect(res.end).toHaveBeenCalledWith(
         JSON.stringify({ message: 'Invalid email or password' })
       );
@@ -56,7 +56,7 @@ describe('User Controller', () => {
 
       await login(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(401, {"Content-Type" : "application/json"});
+      expect(res.writeHead).toHaveBeenCalledWith(401, { "Content-Type": "application/json" });
       expect(res.end).toHaveBeenCalledWith(
         JSON.stringify({ message: 'Invalid email or password' })
       );
@@ -87,12 +87,12 @@ describe('User Controller', () => {
         username: mockUser.username
       }
 
-      const token = jsonwebtoken.sign(data, jwtSecretKey, {expiresIn: '1h'});
+      const token = jsonwebtoken.sign(data, jwtSecretKey, { expiresIn: '1h' });
       await login(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type" : "application/json" });
+      expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type": "application/json" });
       expect(res.end).toHaveBeenCalledWith(
-        JSON.stringify({ message: 'Login successful', token})
+        JSON.stringify({ message: 'Login successful', token })
       );
     });
   });
@@ -100,7 +100,7 @@ describe('User Controller', () => {
   describe('register', () => {
     it('should return 400 if email is already taken', async () => {
       User.findOne.mockResolvedValue({ email: 'test@example.com' });
-      
+
       const mockBody = { username: 'Test', email: 'test@example.com', password: '123456' };
       import('../src/utils/requestBody.js').then(({ default: getRequestBody }) => {
         getRequestBody.mockResolvedValue(mockBody);
@@ -108,7 +108,7 @@ describe('User Controller', () => {
 
       await register(req, res);
 
-      expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type" : "application/json" });
+      expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type": "application/json" });
       expect(res.end).toHaveBeenCalledWith(
         JSON.stringify({ message: 'Email already taken' })
       );
@@ -119,7 +119,7 @@ describe('User Controller', () => {
       const mockBody = { username: 'Test', email: 'test@example.com', password: '123456' };
       const mockUser = { save: vi.fn() };
 
-      User.mockImplementation(() => mockUser); 
+      User.mockImplementation(() => mockUser);
       import('../src/utils/requestBody.js').then(({ default: getRequestBody }) => {
         getRequestBody.mockResolvedValue(mockBody);
       });
@@ -127,7 +127,7 @@ describe('User Controller', () => {
       await register(req, res);
 
       expect(mockUser.save).toHaveBeenCalled();
-      expect(res.writeHead).toHaveBeenCalledWith(201, {"Content-Type" : "application/json"});
+      expect(res.writeHead).toHaveBeenCalledWith(201, { "Content-Type": "application/json" });
       expect(res.end).toHaveBeenCalledWith(
         JSON.stringify({ message: 'User registered successfully', user: mockUser })
       );
@@ -145,11 +145,11 @@ describe('User Controller', () => {
       await getUserDetails(req, res);
 
       expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type": "application/json" });
-      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: "Authorization header missing", error: null}));
+      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: "Authorization header missing", error: null }));
     });
 
     it('should return 400 if token is missing', async () => {
-      const req = { headers: { authorization: `Bearer `} };
+      const req = { headers: { authorization: `Bearer ` } };
       const res = {
         writeHead: vi.fn(),
         end: vi.fn(),
@@ -162,27 +162,28 @@ describe('User Controller', () => {
     });
 
     it('should return 200 with the username if token is valid', async () => {
-      const req = { headers: { authorization : `Bearer validToken`} };
+      const req = { headers: { authorization: `Bearer validToken` } };
       const res = {
         writeHead: vi.fn(),
         end: vi.fn(),
       };
       const decodedToken = { username: 'testUser' };
-      const mockUser = { username: 'testUser', email: 'test@example.com', password: '123456', toObject: function () {
-          const { password, ...safeUser } = this; 
+      const mockUser = {
+        username: 'testUser', email: 'test@example.com', password: '123456', toObject: function() {
+          const { password, ...safeUser } = this;
           return safeUser;
         },
       };
       vi.spyOn(jsonwebtoken, 'verify').mockReturnValue(decodedToken);
       vi.spyOn(User, 'findOne').mockResolvedValue(mockUser);
 
-      await getUserDetails(req, res); 
+      await getUserDetails(req, res);
       const expectedUser = {
         username: 'testUser',
         email: 'test@example.com',
       };
       expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type": "application/json" });
-      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ user: expectedUser }));  
+      expect(res.end).toHaveBeenCalledWith(JSON.stringify({ user: expectedUser }));
     });
   });
 
@@ -202,7 +203,7 @@ describe('User Controller', () => {
     });
 
     it('should return 404 if user not found', async () => {
-      const req = { headers: { authorization: "Bearer mockToken"}, body: {} };
+      const req = { headers: { authorization: "Bearer mockToken" }, body: {} };
       const res = { writeHead: vi.fn(), end: vi.fn() };
 
       const fields = { newUsername: 'newUsername', newEmail: 'newEmail@example.com', newPassword: 'newPassword' };
