@@ -15,7 +15,7 @@ export async function login(req, res) {
 
     const user = await User.findOne({ email });
     if (!user || !(await user.comparePassword(password))) {
-      res.writeHead(401, {"Content-Type" : "application/json"});
+      res.writeHead(401, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: "Invalid email or password" }));
     }
 
@@ -25,12 +25,12 @@ export async function login(req, res) {
       time: Date(),
       username: user.username
     }
-    const token = jsonwebtoken.sign(data, jwtSecretKey, { expiresIn: '1h'});
+    const token = jsonwebtoken.sign(data, jwtSecretKey, { expiresIn: '1h' });
 
-    res.writeHead(200, {"Content-Type" : "application/json"});
-    res.end(JSON.stringify({ message: "Login successful", token}));
+    res.writeHead(200, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ message: "Login successful", token }));
   } catch (err) {
-    res.writeHead(500, {"Content-Type" : "application/json"});
+    res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
   }
 }
@@ -42,17 +42,17 @@ export async function register(req, res) {
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      res.writeHead(400, {"Content-Type" : "application/json"});
+      res.writeHead(400, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: "Email already taken" }));
     }
 
     const newUser = new User({ username, email, password });
     await newUser.save();
 
-    res.writeHead(201, {"Content-Type" : "application/json"});
+    res.writeHead(201, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ message: "User registered successfully", user: newUser }));
   } catch (err) {
-    res.writeHead(500, {"Content-Type" : "application/json"});
+    res.writeHead(500, { "Content-Type": "application/json" });
     res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
   }
 }
@@ -96,31 +96,31 @@ export async function update(req, res) {
               console.log(`${err.message}`);
             }
           });
-          res.writeHead(400, { "Content-Type" : "application/json"});
+          res.writeHead(400, { "Content-Type": "application/json" });
           return res.end(JSON.stringify({ message: "File large than 2gb" }));
         }
         const ext = path.extname(files.picture[0].originalFilename.toLowerCase());
-        
+
         if (ext !== ".jpg" && ext !== ".png" && ext !== ".jpeg" && ext !== ".gif") {
           fs.unlink(tempPath, (err) => {
             if (err) {
               console.log(`${err.message}`);
             }
           });
-          res.writeHead(400, { "Content-Type" : "application/json"});
-          return res.end(JSON.stringify({ message: "File not support"}));
-        } 
+          res.writeHead(400, { "Content-Type": "application/json" });
+          return res.end(JSON.stringify({ message: "File not support" }));
+        }
 
         newPicture = `profile_picture/${Date.now()}${ext}`;
-        
+
         const dirPath = path.join(process.cwd(), "uploads", "profile_picture");
         if (!fs.existsSync(dirPath)) {
-          fs.mkdirSync(dirPath, { recursive: true});
+          fs.mkdirSync(dirPath, { recursive: true });
         }
-        
+
         const oldFilePath = path.join(process.cwd(), "uploads", user.picture);
         const permanentPath = path.join(process.cwd(), "uploads", newPicture);
-        
+
         fs.rename(tempPath, permanentPath, (err) => {
           if (err) {
             console.error('Error replacing file:', err);
@@ -129,13 +129,13 @@ export async function update(req, res) {
         fs.rename(oldFilePath, permanentPath, (err) => {
           if (err) {
             console.error('Error replacing file:', err);
-          } 
+          }
         });
       }
-      
-      if (newUsername) user.username = newUsername;
-      if (newEmail) user.email = newEmail;
-      if (newPassword) user.password = newPassword;
+
+      if (newUsername) user.username = newUsername[0];
+      if (newEmail) user.email = newEmail[0];
+      if (newPassword) user.password = newPassword[0];
       if (newPicture) user.picture = newPicture;
 
       const updatedUser = await user.save();
@@ -155,7 +155,7 @@ export async function getUserDetails(req, res) {
   try {
     const decoded = extractTokenFromHeader(req);
     const { username } = decoded;
-    
+
     const user = await User.findOne({ username });
     const { password: _, ...safeUser } = user.toObject();
 
@@ -180,13 +180,13 @@ export async function getUserProfilePicture(req, res) {
       res.writeHead(404, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: "User not found" }));
     }
-    
+
     const __filename = fileURLToPath(import.meta.url);
-    const __dirname = path.dirname(__filename); 
-    const filePath = path.resolve(__dirname,"../../uploads/",user.picture);
+    const __dirname = path.dirname(__filename);
+    const filePath = path.resolve(__dirname, "../../uploads/", user.picture);
     const extension = path.extname(user.picture).toLowerCase();
 
-    let contentType = "image/png";    
+    let contentType = "image/png";
     if (extension === ".jpg" || extension === ".jpeg") {
       contentType = "image/jpeg";
     } else if (extension === ".gif") {
