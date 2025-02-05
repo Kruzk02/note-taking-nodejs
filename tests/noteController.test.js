@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { save, update, findById, deleteById } from "../src/controllers/noteController.js";
+import { saveNote, updateNote, findNoteById, deleteNoteById, findNoteByUser } from "../src/controllers/noteController.js";
 import Note from "../src/models/noteModel.js";
 import * as formidable from 'formidable';
 import fs from "fs/promises";
@@ -48,7 +48,7 @@ describe("Note Controller", () => {
       const req = mockRequest();
       const res = mockResponse();
 
-      await save(req, res);
+      await saveNote(req, res);
 
       expect(form.parse).toHaveBeenCalled();
       expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type": "application/json" });
@@ -70,7 +70,7 @@ describe("Note Controller", () => {
       const req = mockRequest();
       const res = mockResponse();
 
-      await update(req, res);
+      await updateNote(req, res);
 
       expect(form.parse).toHaveBeenCalled();
       expect(res.writeHead).toHaveBeenCalledWith(400, { "Content-Type": "application/json" });
@@ -85,7 +85,7 @@ describe("Note Controller", () => {
       const req = mockRequest();
       const res = mockResponse();
 
-      await findById(req, res);
+      await findNoteById(req, res);
 
       expect(Note.findById).toHaveBeenCalledWith("mock-note-id");
       expect(res.writeHead).toHaveBeenCalledWith(200, { "Content-Type": "application/json" });
@@ -98,7 +98,7 @@ describe("Note Controller", () => {
       const req = mockRequest();
       const res = mockResponse();
 
-      await findById(req, res);
+      await findNoteById(req, res);
 
       expect(res.writeHead).toHaveBeenCalledWith(404, { "Content-Type": "application/json" });
       expect(res.end).toHaveBeenCalledWith(JSON.stringify({ message: "Note not found" }));
@@ -116,7 +116,7 @@ describe("Note Controller", () => {
         end: vi.fn(),
       };
 
-      await deleteById(req, res);
+      await deleteNoteById(req, res);
 
       expect(fs.unlink(path.join(process.cwd(), "uploads", "mock-icon.png")));
     });

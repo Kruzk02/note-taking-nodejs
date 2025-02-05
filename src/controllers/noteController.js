@@ -15,7 +15,7 @@ function generateRandomString(length) {
   return result;
 }
 
-export async function save(req, res) {
+export async function saveNote(req, res) {
   const form = formidable({
     uploadDIr: path.join(process.cwd(), "uploads"),
     keepExtensions: true,
@@ -107,7 +107,7 @@ export async function save(req, res) {
   });
 }
 
-export async function update(req, res) {
+export async function updateNote(req, res) {
   const form = formidable({
     uploadDIr: path.join(process.cwd(), "uploads"),
     keepExtensions: true,
@@ -190,16 +190,16 @@ export async function update(req, res) {
           await fs.promises.copyFile(oldPath, permanentPath);
           await fs.promises.unlink(oldPath);
         }
-
-        if (cleanName) existingNote.name = cleanName;
-        if (newIcon) existingNote.icon = newIcon;
-
-        existingNote.updatedAt = Date.now();
-        const updatedNote = await existingNote.save();
-
-        res.writeHead(200, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify(updatedNote));
       }
+
+      if (cleanName) existingNote.name = cleanName;
+      if (newIcon) existingNote.icon = newIcon;
+
+      existingNote.updatedAt = Date.now();
+      const updatedNote = await existingNote.save();
+
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(updatedNote));
 
     } catch (err) {
       res.writeHead(500, { "Content-Type": "application/json" });
@@ -208,7 +208,7 @@ export async function update(req, res) {
   });
 }
 
-export async function findById(req, res) {
+export async function findNoteById(req, res) {
   try {
     const note = await Note.findById(req.id);
     if (!note) {
@@ -224,7 +224,7 @@ export async function findById(req, res) {
   }
 }
 
-export async function findByUser(req, res) {
+export async function findNoteByUser(req, res) {
   try {
     const decoded = extractTokenFromHeader(req);
     const { username } = decoded;
@@ -250,7 +250,7 @@ export async function findByUser(req, res) {
   }
 }
 
-export async function deleteById(req, res) {
+export async function deleteNoteById(req, res) {
   try {
     const decoded = extractTokenFromHeader(req);
     const { username } = decoded;
