@@ -1,6 +1,7 @@
 import { login, register, getUserDetails, getUserProfilePicture, update } from '../controllers/userController.js';
 import { saveNote, updateNote, findNoteById, deleteNoteById, findNoteByUser } from "../controllers/noteController.js";
 import { saveSection, getSections, deleteBySectionId } from "../controllers/sectionController.js";
+import { savePage, updatePage, findAllPageBySectionId, findPageById, deletePageById } from "../controllers/pageController.js";
 
 export default function router(req, res) {
   const { method, url } = req;
@@ -94,6 +95,46 @@ export default function router(req, res) {
     const sectionId = pathSegments[3];
     req.id = sectionId;
     return deleteBySectionId(req, res);
+  }
+
+  if (method === "GET" && pathSegments.length === 5 &&
+    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
+    pathSegments[2] === "sections" && pathSegments[4] === "pages") {
+    const sectionId = pathSegments[3];
+    req.sectionId = sectionId;
+    return findAllPageBySectionId(req, res);
+  }
+
+  if (method === "GET" && pathSegments.length === 4 &&
+    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
+    pathSegments[2] === "pages") {
+    const pageId = pathSegments[3];
+    req.pageId = pageId;
+    return findPageById(req, res);
+  }
+
+  if (method === "POST" && pathSegments.length === 5 &&
+    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
+    pathSegments[2] === "sections" && pathSegments[4] === "pages") {
+    const sectionId = pathSegments[3];
+    req.sectionId = sectionId;
+    return savePage(req, res);
+  }
+
+  if (method === "PUT" && pathSegments.length === 4 &&
+    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
+    pathSegments[2] === "pages") {
+    const pageId = pathSegments[3];
+    req.pageId = pageId;
+    return updatePage(req, res)
+  }
+
+  if (method === "DELETE" && pathSegments.length === 4 &&
+    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
+    pathSegments[2] === "pages") {
+    const pageId = pathSegments[3];
+    req.pageId = pageId;
+    return deletePageById(req, res);
   }
 
   res.writeHead(404, { "Content-Type": "application/json" });
