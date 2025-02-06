@@ -13,10 +13,6 @@ const pageSchema = new mongoose.Schema({
     type: Date,
     default: Date.now
   },
-  updatedAt: {
-    type: Date,
-    default: Date.now
-  }
 });
 
 pageSchema.pre('save', function (next) {

@@ -3,24 +3,25 @@ import bcrypt from 'bcryptjs';
 
 const userSchema = new mongoose.Schema(
   {
-    username: { 
-      type: String, 
-      required: true, 
-      minlength: [6, 'username should be more than 6 characters'], 
+    username: {
+      type: String,
+      required: true,
+      unique: true,
+      minlength: [6, 'username should be more than 6 characters'],
       maxlength: [128, 'username should be less than 128 characters']
     },
-    email: { 
-      type: String, 
-      required: true, 
-      unique: true, 
-      minlength: [8, 'email should be more than 8 characters'], 
+    email: {
+      type: String,
+      required: true,
+      unique: true,
+      minlength: [8, 'email should be more than 8 characters'],
       maxlength: [256, 'email should be less than 256 characters'],
       match: [/\S+@\S+\.\S+/, 'Please enter a valid email address']
     },
-    password: { 
-      type: String, 
-      required: true, 
-      minlength: [6, 'password should be more than 6 characters'], 
+    password: {
+      type: String,
+      required: true,
+      minlength: [6, 'password should be more than 6 characters'],
       maxlength: [128, 'password should be less than 128 characters']
     },
     role: {
@@ -33,7 +34,7 @@ const userSchema = new mongoose.Schema(
       required: true,
       default: ['READ', "WRITE"],
     },
-    picture: { 
+    picture: {
       type: String,
       default: "uploads/profile_picture/default_profile_picture.png"
     }
@@ -41,7 +42,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-userSchema.pre('save', async function (next) {
+userSchema.pre('save', async function(next) {
   if (this.isModified('password')) {
     try {
       const salt = await bcrypt.genSalt(10);
@@ -53,7 +54,7 @@ userSchema.pre('save', async function (next) {
   next();
 });
 
-userSchema.methods.comparePassword = async function (candidatePassword) {
+userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
