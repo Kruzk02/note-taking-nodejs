@@ -4,7 +4,10 @@ import { extractTokenFromHeader } from "../utils/JwtUtil.js";
 import formidable from "formidable";
 import path from "path";
 import fs from 'fs';
-import { stat } from 'fs/promises'
+import { stat } from 'fs/promises';
+import { getRedisClient } from '../configs/RedisConfig.js';
+
+const redisClient = await getRedisClient();
 
 function generateRandomString(length) {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
@@ -96,7 +99,8 @@ export async function saveNote(req, res) {
         user: user.id,
       });
       const savedNote = await note.save();
-
+      
+      await redisClient.set(`note:${savedNote.id}`, JSON.stringify(savedNote), { EX: 3600 });
       res.writeHead(201, { "Content-Type": "application/json" });
       return res.end(JSON.stringify(savedNote));
     } catch (err) {
@@ -150,7 +154,8 @@ export async function updateNote(req, res) {
         res.writeHead(400, { "Content-Type": "application/json" });
         return res.end(JSON.stringify({ message: "Authenticated user not own note" }));
       }
-
+      
+      await redisClient.del(`note:${existingNote.id}`);
       if (files.icon && files.icon[0]) {
         const tempPath = files.icon[0].filepath;
         const originFilename = files.icon[0].originalFilename || "";
@@ -198,6 +203,7 @@ export async function updateNote(req, res) {
       existingNote.updatedAt = Date.now();
       const updatedNote = await existingNote.save();
 
+      await redisClient.set(`note:${updatedNote.id}`, JSON.stringify(updatedNote), { EX: 3600 });
       res.writeHead(200, { "Content-Type": "application/json" });
       return res.end(JSON.stringify(updatedNote));
 
@@ -210,12 +216,19 @@ export async function updateNote(req, res) {
 
 export async function findNoteById(req, res) {
   try {
+    const cachedNote = await redisClient.get(`note:${req.id}`);
+    if (cachedNote) {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(cachedNote);
+    }
+
     const note = await Note.findById(req.id);
     if (!note) {
       res.writeHead(404, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: "Note not found" }));
     }
 
+    await redisClient.set(`note:${note.id}`, JSON.stringify(note), { EX: 3600 });
     res.writeHead(200, { "Content-Type": "application/json" });
     res.end(JSON.stringify(note));
   } catch (err) {
@@ -228,6 +241,15 @@ export async function findNoteByUser(req, res) {
   try {
     const decoded = extractTokenFromHeader(req);
     const { username } = decoded;
+    const redisKey = `note:user:${username}`;
+
+    const cachedNotes = await redisClient.lRange(redisKey, 0, -1);
+    
+    if (cachedNotes.length > 0) {
+      const notesList = cachedNotes.map(note => JSON.parse(note));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(notesList));
+    }
 
     const notes = await Note.find().populate({
       path: 'user',
@@ -236,12 +258,21 @@ export async function findNoteByUser(req, res) {
     })
       .select('title content tags icon createdAt updatedAt')
       .exec();
-    if (!notes) {
+
+    if (!notes || notes.length === 0) {
       res.writeHead(404, { "Content-Type": "application/json" });
       return res.end(JSON.stringify({ message: "Note not found" }));
     }
 
     const filteredNotes = notes.filter(note => note.user !== null);
+
+    await redisClient.del(redisKey);
+    for (const note of filteredNotes) {
+      await redisClient.rPush(redisKey, JSON.stringify(note));
+    }
+
+    await redisClient.expire(redisKey, 3600);
+
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(JSON.stringify(filteredNotes));
   } catch (err) {
@@ -267,6 +298,7 @@ export async function deleteNoteById(req, res) {
       return res.end(JSON.stringify({ message: "Authenticated user not own the note" }));
     }
 
+    await redisClient.del(`note:${note.id}`);
     await Note.deleteOne(note);
     await fs.promises.unlink(path.join(process.cwd(), "uploads", note.icon));
 
