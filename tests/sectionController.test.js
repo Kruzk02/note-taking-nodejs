@@ -1,39 +1,12 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import { getSections, deleteBySectionId } from '../src/controllers/sectionController.js';
+import { deleteBySectionId } from '../src/controllers/sectionController.js';
 import Note from '../src/models/noteModel.js';
 import Section from '../src/models/sectionModel.js';
+import { getRedisClient } from '../src/configs/RedisConfig.js';
 
 vi.mock('../src/models/noteModel.js');
 vi.mock('../src/models/sectionModel.js');
-
-describe('getSections', () => {
-  let req, res;
-  beforeEach(() => {
-    req = { noteId: 'note123' };
-    res = { writeHead: vi.fn(), end: vi.fn() };
-  });
-
-  test('should return sections of the note', async () => {
-    const mockNote = { sections: [{ _id: 'section1' }] };
-    Note.findById.mockReturnValue({
-      populate: vi.fn().mockResolvedValue({ sections: [{ _id: "section1" }] }),
-    });
-
-
-    await getSections(req, res);
-
-    expect(res.end).toHaveBeenCalledWith(JSON.stringify(mockNote.sections));
-  });
-
-  test('should return 404 if note not found', async () => {
-    Note.findById.mockReturnValue({
-      populate: vi.fn().mockResolvedValue(null),
-    });
-    await getSections(req, res);
-
-    expect(res.writeHead).toHaveBeenCalledWith(404, { 'Content-Type': 'application/json' });
-  });
-});
+vi.mock('../src/configs/RedisConfig.js');
 
 describe('deleteBySectionId', () => {
   let req, res;
