@@ -4,6 +4,9 @@ import Section from "../models/sectionModel.js";
 import Page from "../models/pageModel.js";
 import { extractTokenFromHeader } from "../utils/JwtUtil.js";
 import getRequestBody from "../utils/requestBody.js";
+import { getRedisClient } from "../configs/RedisConfig.js";
+
+const redisClient = await getRedisClient();
 
 export async function savePage(req, res) {
   try {
@@ -137,16 +140,24 @@ export async function updatePage(req, res) {
 
 export async function findAllPageBySectionId(req, res) {
   try {
+    const redisKey = `section:${req.sectionId}:pages`;
+    const cachedPage = await redisClient.lRange(redisKey, 0, -1);
+    if (cachedPage.length > 0) {
+      const pages = cachedPage.map(page => JSON.parse(page));
+      res.writeHead(200, { "Content-Type": "application/json" });
+      return res.end(JSON.stringify(pages));
+    }
+
     const section = await Section.findById(req.sectionId).populate("pages");
     if (!section) {
       res.writeHead(404, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ mesage: "Section not found" }));
+      return res.end(JSON.stringify({ message: "Section not found" }));
     }
 
     const note = await Note.findOne({ sections: section._id }).select("user");
     if (!note) {
       res.writeHead(404, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ mesage: "Note not found" }));
+      return res.end(JSON.stringify({ message: "Note not found" }));
     }
 
     const decoded = extractTokenFromHeader(req);
@@ -167,6 +178,11 @@ export async function findAllPageBySectionId(req, res) {
       return res.end(JSON.stringify({ message: "Authenticated user does not own the note" }));
     }
 
+    for (const page of section.pages) {
+      await redisClient.rPush(redisKey, JSON.stringify(page));
+    }
+
+    await redisClient.expire(redisKey, 3600);
     res.writeHead(200, { "Content-Type": "application/json" });
     return res.end(JSON.stringify({ pages: section.pages }));
   } catch (err) {
