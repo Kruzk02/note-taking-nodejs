@@ -1,6 +1,7 @@
 import User from "../models/userModel.js";
 import Note from "../models/noteModel.js";
 import Section from "../models/sectionModel.js";
+import sendResponse from '../utils/responseBody.js';
 import { extractTokenFromHeader } from "../utils/JwtUtil.js";
 import getRequestBody from "../utils/requestBody.js";
 import { getRedisClient } from "../configs/RedisConfig.js";
@@ -14,18 +15,13 @@ export async function saveSection(req, res) {
 
     const { name } = body;
     if (!name) {
-      return res.writeHead(400, { "Content-Type": "application/json" }).end(
-        JSON.stringify({ message: "Section name is required" })
-      );
+      return sendResponse(res, 400, "application/json", { message: "Section name is required" })
     }
 
     // Fetch Note from database
     const existingNote = await Note.findById(req.noteId);
     if (!existingNote) {
-      res.writeHead(404, { "Content-Type": "application/json" })
-      return res.end(
-        JSON.stringify({ message: "Note not found" })
-      );
+      return sendResponse(res, 404, "application/json", { message: "Note not found" });
     }
 
     const decoded = extractTokenFromHeader(req);
@@ -34,10 +30,7 @@ export async function saveSection(req, res) {
     // Fetch User from database
     const user = await User.findOne({ username }).select("_id");
     if (!user) {
-      res.writeHead(404, { "Content-Type": "application/json" })
-      return res.end(
-        JSON.stringify({ message: "User not found" })
-      );
+      return sendResponse(res, 404, "application/json", { message: "User not found" });
     }
 
     const section = new Section({ name });
@@ -46,12 +39,9 @@ export async function saveSection(req, res) {
     existingNote.sections.push(section._id);
     await existingNote.save(); // Save the updated note
 
-    res.writeHead(201, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Section added successfully", note: existingNote }));
+    return sendResponse(res, 201, "application/json", { message: "Section added successfully", note: existingNote });
   } catch (err) {
-    console.error(err);
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+    return sendResponse(res, 500, "application/json", { message: "Internal Server Error", error: err.message });
   }
 }
 
@@ -62,14 +52,12 @@ export async function getSections(req, res) {
     const cachedSections = await redisClient.lRange(redisKey, 0, -1);
     if (cachedSections.length > 0) {
       const sections = cachedSections.map(section => JSON.parse(section));
-      res.writeHead(200, { "Content-Type": "application/json"});
-      return res.end(JSON.stringify(sections));
+      return sendResponse(res, 200, "application/json", sections);
     }
 
     const note = await Note.findById(req.noteId).populate("sections");
     if (!note) {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "Note not found" }));
+      return sendResponse(res, 404, "application/json", { message: "Note not found" });
     }
 
     for (const section of note.sections) {
@@ -77,12 +65,9 @@ export async function getSections(req, res) {
     }
 
     await redisClient.expire(redisKey, 3600);
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(note.sections));
+    return sendResponse(res, 200, "application/json", note.sections);
   } catch (err) {
-    console.error("Error in getSections:", err); // Add this for debugging
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+    return sendResponse(res, 500, "application/json", { message: "Internal Server Error", error: err.message });
   }
 }
 
@@ -90,16 +75,14 @@ export async function deleteBySectionId(req, res) {
   try {
     const section = await Section.findById(req.id);
     if (!section) {
-      return res.writeHead(404, { "Content-Type": "application/json" }).end(JSON.stringify({ message: "Section not found" }));
+      return sendResponse(res, 404, "application/json", { message: "Section not found" });
     }
 
     await Note.updateMany({ sections: section.id }, { $pull: { sections: section.id } });
     await Section.deleteOne(section);
 
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Section deleted successfully" }));
+    return sendResponse(res, 200, "application/json", { message: "Section deleted successfully" });
   } catch (err) {
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+    return sendResponse(res, 500, "application/json", { message: "Internal Server Error", error: err.message });
   }
 }
