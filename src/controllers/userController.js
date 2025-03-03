@@ -1,6 +1,7 @@
 import User from '../models/userModel.js';
 import getRequestBody from "../utils/requestBody.js";
 import { extractTokenFromHeader } from "../utils/JwtUtil.js";
+import sendResponse from '../utils/responseBody.js';
 import jsonwebtoken from 'jsonwebtoken';
 import formidable from "formidable";
 import path from "path";
@@ -15,8 +16,7 @@ export async function login(req, res) {
 
     const user = await User.findOne({ email });
     if (!user || !(await user.comparePassword(password))) {
-      res.writeHead(401, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "Invalid email or password" }));
+      return sendResponse(res, 401, "application/json", { message : "Invalid email or password" });
     }
 
     let jwtSecretKey = process.env.JWT_SECRET_KEY;
@@ -27,13 +27,12 @@ export async function login(req, res) {
     }
     const token = jsonwebtoken.sign(data, jwtSecretKey, { expiresIn: '1h' });
 
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Login successful", token }));
+    return sendResponse(res, 200, "application/json", { message: "Login successful", token });
   } catch (err) {
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+    return sendResponse(res, 500, "application/json", { message: "Internal Server Error", error: err.message });
   }
 }
+
 
 export async function register(req, res) {
   try {
@@ -42,18 +41,15 @@ export async function register(req, res) {
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "Email already taken" }));
+      return sendResponse(res, 400, "application/json", { message: "Email already taken" });
     }
 
     const newUser = new User({ username, email, password });
     await newUser.save();
 
-    res.writeHead(201, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "User registered successfully", user: newUser }));
+    return sendResponse(res, 201, "application/json", { message: "User registered successfully", user: newUser })
   } catch (err) {
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+    return sendResponse(res, 500, "application/json", { message: "Internal Server Error", error: err.message });
   }
 }
 
@@ -61,7 +57,7 @@ export async function update(req, res) {
   const form = formidable({
     uploadDir: path.join(process.cwd(), "uploads"),
     keepExtensions: true,
-    filename: (name, ext, part, form) => {
+    filename: (name, ext) => {
       return `${name}-${Date.now()}${ext}`;
     },
   });
@@ -69,8 +65,7 @@ export async function update(req, res) {
   form.parse(req, async (err, fields, files) => {
     try {
       if (err) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Error parsing form data" }));
+        return sendResponse(res, 400, "application/json", { message: "Error parsing form data" });
       }
 
       const { newUsername, newEmail, newPassword } = fields;
@@ -82,38 +77,27 @@ export async function update(req, res) {
       const user = await User.findOne({ username });
 
       if (!user) {
-        res.writeHead(404, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "User not found" }));
+        return sendResponse(res, 404, "application/json", { message: "User not found" }); 
       }
 
       if (files.picture && files.picture[0]) {
-
         const tempPath = files.picture[0].filepath;
         const stats = await stat(tempPath);
-        if (stats.size > 2147483648) {
-          fs.unlink(tempPath, (err) => {
-            if (err) {
-              console.log(`${err.message}`);
-            }
-          });
-          res.writeHead(400, { "Content-Type": "application/json" });
-          return res.end(JSON.stringify({ message: "File large than 2gb" }));
-        }
-        const ext = path.extname(files.picture[0].originalFilename.toLowerCase());
 
-        if (ext !== ".jpg" && ext !== ".png" && ext !== ".jpeg" && ext !== ".gif") {
-          fs.unlink(tempPath, (err) => {
-            if (err) {
-              console.log(`${err.message}`);
-            }
-          });
-          res.writeHead(400, { "Content-Type": "application/json" });
-          return res.end(JSON.stringify({ message: "File not support" }));
+        if (stats.size > 2147483648) {
+          await fs.promises.unlink(tempPath);
+          return sendResponse(res, 400, "application/json", { message: "File larger than 2GB" });
+        }
+
+        const ext = path.extname(files.picture[0].originalFilename.toLowerCase());
+        if (![".jpg", ".png", ".jpeg", ".gif"].includes(ext)) {
+          await fs.promises.unlink(tempPath);
+          return sendResponse(res, 400, "application/json", { message: "File not supported" });
         }
 
         newPicture = `profile_picture/${Date.now()}${ext}`;
-
         const dirPath = path.join(process.cwd(), "uploads", "profile_picture");
+
         if (!fs.existsSync(dirPath)) {
           fs.mkdirSync(dirPath, { recursive: true });
         }
@@ -121,16 +105,10 @@ export async function update(req, res) {
         const oldFilePath = path.join(process.cwd(), "uploads", user.picture);
         const permanentPath = path.join(process.cwd(), "uploads", newPicture);
 
-        fs.rename(tempPath, permanentPath, (err) => {
-          if (err) {
-            console.error('Error replacing file:', err);
-          }
-        });
-        fs.rename(oldFilePath, permanentPath, (err) => {
-          if (err) {
-            console.error('Error replacing file:', err);
-          }
-        });
+        await fs.promises.rename(tempPath, permanentPath);
+        if (fs.existsSync(oldFilePath)) {
+          await fs.promises.unlink(oldFilePath);
+        }
       }
 
       if (newUsername) user.username = newUsername[0];
@@ -139,14 +117,11 @@ export async function update(req, res) {
       if (newPicture) user.picture = newPicture;
 
       const updatedUser = await user.save();
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end(JSON.stringify(updatedUser));
+      return sendResponse(res, 200, "application/json", updatedUser);
     } catch (err) {
       const statusCode = err.statusCode || 500;
       const message = err.message || "Internal Server Error";
-
-      res.writeHead(statusCode, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ message, error: err.details || null }));
+      return sendResponse(res, statusCode, "application/json", { message, error: err.details || null });
     }
   });
 }
@@ -159,14 +134,12 @@ export async function getUserDetails(req, res) {
     const user = await User.findOne({ username });
     const { password: _, ...safeUser } = user.toObject();
 
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ user: safeUser }));
+    return sendResponse(res, 200, "application/json", { user: safeUser });
   } catch (err) {
     const statusCode = err.statusCode || 500;
     const message = err.message || "Internal Server Error";
 
-    res.writeHead(statusCode, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message, error: err.details || null }));
+    return sendResponse(res, statusCode, "application/json", { message, error: err.details || null });
   }
 }
 
@@ -195,14 +168,11 @@ export async function getUserProfilePicture(req, res) {
 
     try {
       const content = await readFile(filePath);
-      res.writeHead(200, { "Content-Type": contentType });
-      res.end(content);
+      return sendResponse(res, 200, contentType, content);
     } catch (err) {
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ message: "Error reading file", error: err.message }));
+      return sendResponse(res, 500, "application/json", { message: "Error reading file", error: err.message })
     }
   } catch (err) {
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+    return sendResponse(res, 500, "application/json", { message: "Internal Server Error", error: err.message })
   }
 }
