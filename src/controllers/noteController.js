@@ -1,5 +1,6 @@
 import User from '../models/userModel.js';
 import Note from '../models/noteModel.js'
+import sendResponse from '../utils/responseBody.js';
 import { extractTokenFromHeader } from "../utils/JwtUtil.js";
 import formidable from "formidable";
 import path from "path";
@@ -29,8 +30,7 @@ export async function saveNote(req, res) {
   form.parse(req, async (err, fields, files) => {
     try {
       if (err) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Error parsing form data" }));
+        return sendResponse(res, 400, "application/json", { message: "Error parsing form data" });
       }
 
       const { name } = fields;
@@ -39,8 +39,7 @@ export async function saveNote(req, res) {
 
 
       if (!cleanName) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Missing required fields: name" }));
+        return sendResponse(res, 400, "application/json", { message: "Missing required fields: name" });
       }
 
       let icon = null;
@@ -50,8 +49,7 @@ export async function saveNote(req, res) {
 
       const user = await User.findOne({ username }).select("_id");
       if (!user) {
-        res.writeHead(404, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "User not found" }));
+        return sendResponse(res, 404, "application/json", { message: "User not found" });
       }
 
       if (files.icon && files.icon[0]) {
@@ -59,8 +57,7 @@ export async function saveNote(req, res) {
         const originFilename = files.icon[0].originalFilename || "";
 
         if (!originFilename) {
-          res.writeHead(400, { "Content-Type": "application/json" });
-          return res.end(JSON.stringify({ message: "No valid file uploaded" }));
+          return sendResponse(res, 400, "application/json", { message: "No valid file uploaded" });
         }
 
         const stats = await stat(tempPath);
@@ -69,8 +66,7 @@ export async function saveNote(req, res) {
           fs.unlink(tempPath, (unlinkErr) => {
             if (unlinkErr) console.error(`Error deleting file: ${unlinkErr.message}`);
           });
-          res.writeHead(400, { "Content-Type": "application/json" });
-          return res.end(JSON.stringify({ message: "File larger than 2MB" }));
+          return sendResponse(res, 400, "application/json", { message: "File larger than 2MB"});
         }
 
         const ext = path.extname(originFilename).toLowerCase();
@@ -78,8 +74,7 @@ export async function saveNote(req, res) {
           fs.unlink(tempPath, (unlinkErr) => {
             if (unlinkErr) console.error(`Error deleting file: ${unlinkErr.message}`);
           });
-          res.writeHead(400, { "Content-Type": "application/json" });
-          return res.end(JSON.stringify({ message: "File type not supported" }));
+          return sendResponse(res, 400, "application/json", { message: "File type not supported" });
         }
 
         const uniqueName = generateRandomString(24);
@@ -101,12 +96,9 @@ export async function saveNote(req, res) {
       const savedNote = await note.save();
       
       await redisClient.set(`note:${savedNote.id}`, JSON.stringify(savedNote), { EX: 3600 });
-      res.writeHead(201, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify(savedNote));
+      return sendResponse(res, 201, "application/json", savedNote);
     } catch (err) {
-      console.error(err);
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+      return sendResponse(res, 500, "application/json", { message: "Internal Server Error", error: err.message });
     }
   });
 }
@@ -122,8 +114,7 @@ export async function updateNote(req, res) {
   form.parse(req, async (err, fields, files) => {
     try {
       if (err) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Error reading form data" }));
+        return sendResponse(res, 400, "application/json", { message: "Error reading form data" });
       }
 
       const { name } = fields;
@@ -131,28 +122,24 @@ export async function updateNote(req, res) {
       const cleanName = Array.isArray(name) ? name[0] : name;
 
       if (!cleanName) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Missing required fields: name" }));
+        return sendResponse(res, 400, "application/json", { message: "Missing required fields: name" });
       }
       let newIcon = null;
 
       const existingNote = await Note.findById(req.id);
       if (!existingNote) {
-        res.writeHead(404, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Note not found" }));
+        return sendResponse(res, 404, "application/json", { message: "Note not found"});
       }
 
       const decoded = extractTokenFromHeader(req);
       const { username } = decoded;
       const user = await User.findOne({ username }).select("_id");
       if (!user) {
-        res.writeHead(404, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "User not found" }));
+        return sendResponse(res, 404, "application/json", { message: "User not found" });
       }
 
       if (existingNote.user.toString() !== user.id) {
-        res.writeHead(400, { "Content-Type": "application/json" });
-        return res.end(JSON.stringify({ message: "Authenticated user not own note" }));
+        return sendResponse(res, 400, "application/json", { message: "Authenticated user not own note" });
       }
       
       await redisClient.del(`note:${existingNote.id}`);
@@ -161,23 +148,20 @@ export async function updateNote(req, res) {
         const originFilename = files.icon[0].originalFilename || "";
 
         if (!originFilename) {
-          res.writeHead(400, { "Content-Type": "application/json" });
-          return res.end(JSON.stringify({ message: "No valid file uploaded" }));
+          return sendResponse(res, 400, "application/json", { message: "No valid file uploaded" });
         }
 
         const stats = await stat(tempPath);
 
         if (stats.size > 2000000) {
           await fs.promises.unlink(tempPath);
-          res.writeHead(400, { "Content-Type": "application/json" });
-          return res.end(JSON.stringify({ message: "File larger than 2MB" }));
+          return sendResponse(res, 400, "application/json", { message: "File larger than 2MB" });
         }
 
         const ext = path.extname(originFilename).toLowerCase();
         if (![".jpg", ".png", ".jpeg", ".gif"].includes(ext)) {
           await fs.promises.unlink(tempPath);
-          res.writeHead(400, { "Content-Type": "application/json" });
-          return res.end(JSON.stringify({ message: "File type not supported" }));
+          return sendResponse(res, 400, "application/json", { message: "File type not supported" });
         }
 
         const uniqueName = generateRandomString(24);
@@ -204,12 +188,9 @@ export async function updateNote(req, res) {
       const updatedNote = await existingNote.save();
 
       await redisClient.set(`note:${updatedNote.id}`, JSON.stringify(updatedNote), { EX: 3600 });
-      res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify(updatedNote));
-
+      return sendResponse(res, 200, "application/json", updatedNote);
     } catch (err) {
-      res.writeHead(500, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+      return sendResponse(res, 500, "application/json", { message: "Internal Server Error", error: err.message });
     }
   });
 }
@@ -218,22 +199,17 @@ export async function findNoteById(req, res) {
   try {
     const cachedNote = await redisClient.get(`note:${req.id}`);
     if (cachedNote) {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(cachedNote);
+      return sendResponse(res, 200, "application/json", JSON.parse(cachedNote));
     }
 
     const note = await Note.findById(req.id);
     if (!note) {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "Note not found" }));
+      return sendResponse(res, 404, "application/json", { message: "Note not found" });
     }
-
     await redisClient.set(`note:${note.id}`, JSON.stringify(note), { EX: 3600 });
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify(note));
+    return sendResponse(res, 200, "application/json", note);
   } catch (err) {
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+    return sendResponse(res, 500, "application/json", { message: "Internal Server Error", error: err.message });
   }
 }
 
@@ -247,8 +223,7 @@ export async function findNoteByUser(req, res) {
     
     if (cachedNotes.length > 0) {
       const notesList = cachedNotes.map(note => JSON.parse(note));
-      res.writeHead(200, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify(notesList));
+      return sendResponse(res, 200, "application/json", notesList);
     }
 
     const notes = await Note.find().populate({
@@ -260,8 +235,7 @@ export async function findNoteByUser(req, res) {
       .exec();
 
     if (!notes || notes.length === 0) {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "Note not found" }));
+      return sendResponse(res, 404, "application/json", JSON.parse({ message: "Note not found" }));
     }
 
     const filteredNotes = notes.filter(note => note.user !== null);
@@ -273,11 +247,9 @@ export async function findNoteByUser(req, res) {
 
     await redisClient.expire(redisKey, 3600);
 
-    res.writeHead(200, { "Content-Type": "application/json" });
-    return res.end(JSON.stringify(filteredNotes));
+    return sendResponse(res, 200, "application/json", filteredNotes);
   } catch (err) {
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+    return sendResponse(res, 500, "application/json", { message: "Internal Server Error", error: err.message });
   }
 }
 
@@ -289,23 +261,19 @@ export async function deleteNoteById(req, res) {
 
     const note = await Note.findById(req.id);
     if (!note) {
-      res.writeHead(404, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "Note not found" }));
+      return sendResponse(res, 404, "application/json", { message: "Note not found" })
     }
 
     if (note.user.toString() !== user.id) {
-      res.writeHead(400, { "Content-Type": "application/json" });
-      return res.end(JSON.stringify({ message: "Authenticated user not own the note" }));
+      return sendResponse(res, 400, "application/json", { message: "Authenticated user not own the note" });
     }
 
     await redisClient.del(`note:${note.id}`);
     await Note.deleteOne(note);
     await fs.promises.unlink(path.join(process.cwd(), "uploads", note.icon));
 
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Note successfully deleted" }));
+    return sendResponse(res, 200, "application/json", { message: "Note successfully deleted" });
   } catch (err) {
-    res.writeHead(500, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ message: "Internal Server Error", error: err.message }));
+    return sendResponse(res, 500, "application/json", { message: "Internal Server Error", error: err.message });
   }
 }
