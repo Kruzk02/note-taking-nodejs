@@ -1,9 +1,19 @@
 services:
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx.dockerfile
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - .:/usr/src/app
+
   app:
     container_name: nodejs-app
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: nodejs.dockerfile
     ports:
       - "8080:8080"
     volumes:
