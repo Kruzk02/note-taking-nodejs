@@ -8,6 +8,7 @@ services:
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
       - ./proxy_common.conf:/etc/nginx/proxy_common.conf
+      - ./jwt_check.conf:/etc/nginx/jwt_check.conf
       - .:/usr/src/app
     depends_on:
       - app
