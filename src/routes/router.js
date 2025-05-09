@@ -3,138 +3,58 @@ import { saveNote, updateNote, findNoteById, deleteNoteById, findNoteByUser } fr
 import { saveSection, getSections, deleteBySectionId } from "../controllers/sectionController.js";
 import { savePage, updatePage, findAllPageBySectionId, findPageById, deletePageById } from "../controllers/pageController.js";
 
+const routes = [
+  { method: "GET", path: ["api", "v1", "users", "details"], handler: getUserDetails },
+  { method: "GET", path: ["api", "v1", "users", "photo"], handler: getUserProfilePicture },
+  { method: "POST", path: ["api", "v1", "users", "register"], handler: register },
+  { method: "POST", path: ["api", "v1", "users", "login"], handler: login },
+  { method: "PUT", path: ["api", "v1", "users"], handler: update },
+  { method: "GET", path: ["api", "v1", "notes"], handler: findNoteByUser },
+  { method: "GET", path: ["api", "v1", "notes", ":id"], handler: findNoteById },
+  { method: "POST", path: ["api", "v1", "notes"], handler: saveNote },
+  { method: "PUT", path: ["api", "v1", "notes", ":id"], handler: updateNote },
+  { method: "DELETE", path: ["api", "v1", "notes", ":id"], handler: deleteNoteById },
+  { method: "GET", path: ["api", "v1", "notes", ":noteId", "sections"], handler: getSections },
+  { method: "POST", path: ["api", "v1", "notes", ":noteId", "sections"], handler: saveSection },
+  { method: "DELETE", path: ["api", "v1", "sections", ":id"], handler: deleteBySectionId },
+  { method: "GET", path: ["api", "v1", "sections", ":sectionId", "pages"], handler: findAllPageBySectionId },
+  { method: "GET", path: ["api", "v1", "pages", ":id"], handler: findPageById },
+  { method: "POST", path: ["api", "v1", "sections", ":sectionId", "pages"], handler: savePage },
+  { method: "PUT", path: ["api", "v1", "pages", ":id"], handler: updatePage },
+  { method: "DELETE", path: ["api", "v1", "pages", ":id"], handler: deletePageById }
+]
+
+function mathRoute(method, pathSegments) {
+  for (const route of routes) {
+    if (route.method !== method) continue;
+    if (route.path.length !== pathSegments.length) continue;
+
+    const params = {};
+    const isMatch = route.path.every((seg, i) => {
+      if (seg.startsWith(":")) {
+        params[seg.slice(1)] = pathSegments[i];
+        return true;
+      }
+      return seg == pathSegments[i];
+    })
+
+    if (isMatch) {
+      return { handler: route.handler, params }
+    }
+  }
+  return null;
+}
+
 export default function router(req, res) {
   const { method, url } = req;
   const parsedUrl = new URL(url, `http://${req.headers.host}`);
   const pathSegments = parsedUrl.pathname.split("/").filter(Boolean);
 
-  if (method === 'GET' && pathSegments.length === 4 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "users" && pathSegments[3] === "details") {
-    return getUserDetails(req, res);
-  }
+  const match = mathRoute(method, pathSegments);
 
-  if (method === "GET" && pathSegments.length === 4 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "users" && pathSegments[3] === "photo") {
-    return getUserProfilePicture(req, res);
-  }
-
-  if (method === "POST" && pathSegments.length === 4 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "users" && pathSegments[3] === "register") {
-    return register(req, res);
-  }
-
-  if (method === 'POST' && pathSegments.length === 4 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "users" && pathSegments[3] === "login") {
-    return login(req, res);
-  }
-
-  if (method === "PUT" && pathSegments.length === 3 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "users") {
-    return update(req, res);
-  }
-  if (method === "GET" && pathSegments.length === 3 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "notes") {
-    return findNoteByUser(req, res);
-  }
-
-  if (method === "GET" && pathSegments.length === 4 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "notes") {
-    const id = pathSegments[3];
-    req.id = id;
-    return findNoteById(req, res);
-  }
-
-  if (method === "POST" && pathSegments.length === 3 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "notes") {
-    return saveNote(req, res);
-  }
-
-  if (method === "PUT" && pathSegments.length === 4 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "notes") {
-    const id = pathSegments[3];
-    req.id = id;
-    return updateNote(req, res);
-  }
-
-  if (method === "DELETE" && pathSegments.length === 4 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "notes") {
-    const id = pathSegments[3];
-    req.id = id;
-    return deleteNoteById(req, res);
-  }
-
-  if (method === "GET" && pathSegments.length === 5 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "notes" && pathSegments[4] === "sections") {
-    const noteId = pathSegments[3];
-    req.noteId = noteId;
-    return getSections(req, res);
-  }
-
-  if (method === "POST" && pathSegments.length === 5 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "notes" && pathSegments[4] === "sections") {
-    const noteId = pathSegments[3];
-    req.noteId = noteId;
-    return saveSection(req, res);
-  }
-
-  if (method === "DELETE" && pathSegments.length === 4 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "sections") {
-    const sectionId = pathSegments[3];
-    req.id = sectionId;
-    return deleteBySectionId(req, res);
-  }
-
-  if (method === "GET" && pathSegments.length === 5 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "sections" && pathSegments[4] === "pages") {
-    const sectionId = pathSegments[3];
-    req.sectionId = sectionId;
-    return findAllPageBySectionId(req, res);
-  }
-
-  if (method === "GET" && pathSegments.length === 4 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "pages") {
-    const pageId = pathSegments[3];
-    req.pageId = pageId;
-    return findPageById(req, res);
-  }
-
-  if (method === "POST" && pathSegments.length === 5 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "sections" && pathSegments[4] === "pages") {
-    const sectionId = pathSegments[3];
-    req.sectionId = sectionId;
-    return savePage(req, res);
-  }
-
-  if (method === "PUT" && pathSegments.length === 4 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "pages") {
-    const pageId = pathSegments[3];
-    req.pageId = pageId;
-    return updatePage(req, res)
-  }
-
-  if (method === "DELETE" && pathSegments.length === 4 &&
-    pathSegments[0] === "api" && pathSegments[1] === "v1" &&
-    pathSegments[2] === "pages") {
-    const pageId = pathSegments[3];
-    req.pageId = pageId;
-    return deletePageById(req, res);
+  if (match) {
+    req.params = match.params;
+    return match.handler(req, res);
   }
 
   res.writeHead(404, { "Content-Type": "application/json" });
