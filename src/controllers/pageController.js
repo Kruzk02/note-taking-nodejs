@@ -25,11 +25,11 @@ export async function savePage(req, res) {
       return sendResponse(res, 404, "application/json", { message: "User not found" });
     }
 
-    if (!req.sectionId) {
+    if (!req.params.sectionId) {
       return sendResponse(res, 400, "application/json", { message: "Section ID is required" });
     }
 
-    const existingSection = await Section.findById(req.sectionId);
+    const existingSection = await Section.findById(req.params.sectionId);
     if (!existingSection) {
       return sendResponse(res, 404, "application/json", { message: "Section not found" });
     }
@@ -76,11 +76,11 @@ export async function updatePage(req, res) {
     }
 
     // Validate Page ID
-    if (!req.pageId) {
+    if (!req.params.id) {
       return sendResponse(res, 400, "application/json", { message: "Page ID is required" });
     }
 
-    const existingPage = await Page.findById(req.pageId);
+    const existingPage = await Page.findById(req.params.pageId);
     if (!existingPage) {
       return sendResponse(res, 404, "application/json", { message: "Page not found" });
     }
@@ -117,14 +117,14 @@ export async function updatePage(req, res) {
 
 export async function findAllPageBySectionId(req, res) {
   try {
-    const redisKey = `section:${req.sectionId}:pages`;
+    const redisKey = `section:${req.params.sectionId}:pages`;
     const cachedPage = await redisClient.lRange(redisKey, 0, -1);
     if (cachedPage.length > 0) {
       const pages = cachedPage.map(page => JSON.parse(page));
       return sendResponse(res, 200, "application/json", pages);
     }
 
-    const section = await Section.findById(req.sectionId).populate("pages");
+    const section = await Section.findById(req.params.sectionId).populate("pages");
     if (!section) {
       return sendResponse(res, 404, "application/json", { message: "Section not found" });
     }
@@ -163,7 +163,7 @@ export async function findAllPageBySectionId(req, res) {
 export async function findPageById(req, res) {
   try {
 
-    const page = await Page.findById(req.pageId);
+    const page = await Page.findById(req.params.id);
     if (!page) {
       return sendResponse(res, 404, "application/json", { message: "Page not found" });
     }
@@ -201,7 +201,7 @@ export async function findPageById(req, res) {
 
 export async function deletePageById(req, res) {
   try {
-    const page = await Page.findById(req.pageId);
+    const page = await Page.findById(req.params.id);
     if (!page) {
       return sendResponse(res, 404, "application/json", { message: "Page not found" });
     }
