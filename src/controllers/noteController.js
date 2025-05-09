@@ -66,7 +66,7 @@ export async function saveNote(req, res) {
           fs.unlink(tempPath, (unlinkErr) => {
             if (unlinkErr) console.error(`Error deleting file: ${unlinkErr.message}`);
           });
-          return sendResponse(res, 400, "application/json", { message: "File larger than 2MB"});
+          return sendResponse(res, 400, "application/json", { message: "File larger than 2MB" });
         }
 
         const ext = path.extname(originFilename).toLowerCase();
@@ -94,7 +94,7 @@ export async function saveNote(req, res) {
         user: user.id,
       });
       const savedNote = await note.save();
-      
+
       await redisClient.set(`note:${savedNote.id}`, JSON.stringify(savedNote), { EX: 3600 });
       return sendResponse(res, 201, "application/json", savedNote);
     } catch (err) {
@@ -126,9 +126,9 @@ export async function updateNote(req, res) {
       }
       let newIcon = null;
 
-      const existingNote = await Note.findById(req.id);
+      const existingNote = await Note.findById(req.params.id);
       if (!existingNote) {
-        return sendResponse(res, 404, "application/json", { message: "Note not found"});
+        return sendResponse(res, 404, "application/json", { message: "Note not found" });
       }
 
       const decoded = extractTokenFromHeader(req);
@@ -141,7 +141,7 @@ export async function updateNote(req, res) {
       if (existingNote.user.toString() !== user.id) {
         return sendResponse(res, 400, "application/json", { message: "Authenticated user not own note" });
       }
-      
+
       await redisClient.del(`note:${existingNote.id}`);
       if (files.icon && files.icon[0]) {
         const tempPath = files.icon[0].filepath;
@@ -197,12 +197,12 @@ export async function updateNote(req, res) {
 
 export async function findNoteById(req, res) {
   try {
-    const cachedNote = await redisClient.get(`note:${req.id}`);
+    const cachedNote = await redisClient.get(`note:${req.params.id}`);
     if (cachedNote) {
       return sendResponse(res, 200, "application/json", JSON.parse(cachedNote));
     }
 
-    const note = await Note.findById(req.id);
+    const note = await Note.findById(req.params.id);
     if (!note) {
       return sendResponse(res, 404, "application/json", { message: "Note not found" });
     }
@@ -220,7 +220,7 @@ export async function findNoteByUser(req, res) {
     const redisKey = `note:user:${username}`;
 
     const cachedNotes = await redisClient.lRange(redisKey, 0, -1);
-    
+
     if (cachedNotes.length > 0) {
       const notesList = cachedNotes.map(note => JSON.parse(note));
       return sendResponse(res, 200, "application/json", notesList);
@@ -259,7 +259,7 @@ export async function deleteNoteById(req, res) {
     const { username } = decoded;
     const user = await User.findOne({ username }).select('_id');
 
-    const note = await Note.findById(req.id);
+    const note = await Note.findById(req.params.id);
     if (!note) {
       return sendResponse(res, 404, "application/json", { message: "Note not found" })
     }
