@@ -19,7 +19,7 @@ export async function saveSection(req, res) {
     }
 
     // Fetch Note from database
-    const existingNote = await Note.findById(req.noteId);
+    const existingNote = await Note.findById(req.params.noteId);
     if (!existingNote) {
       return sendResponse(res, 404, "application/json", { message: "Note not found" });
     }
@@ -47,7 +47,7 @@ export async function saveSection(req, res) {
 
 export async function getSections(req, res) {
   try {
-    const redisKey = `section:note:${req.noteId}`;
+    const redisKey = `section:note:${req.params.noteId}`;
 
     const cachedSections = await redisClient.lRange(redisKey, 0, -1);
     if (cachedSections.length > 0) {
@@ -55,7 +55,7 @@ export async function getSections(req, res) {
       return sendResponse(res, 200, "application/json", sections);
     }
 
-    const note = await Note.findById(req.noteId).populate("sections");
+    const note = await Note.findById(req.params.noteId).populate("sections");
     if (!note) {
       return sendResponse(res, 404, "application/json", { message: "Note not found" });
     }
@@ -73,7 +73,7 @@ export async function getSections(req, res) {
 
 export async function deleteBySectionId(req, res) {
   try {
-    const section = await Section.findById(req.id);
+    const section = await Section.findById(req.params.id);
     if (!section) {
       return sendResponse(res, 404, "application/json", { message: "Section not found" });
     }
