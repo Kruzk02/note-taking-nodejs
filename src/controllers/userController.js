@@ -1,6 +1,5 @@
 import User from '../models/userModel.js';
 import getRequestBody from "../utils/requestBody.js";
-import { extractTokenFromHeader } from "../utils/JwtUtil.js";
 import sendResponse from '../utils/responseBody.js';
 import jsonwebtoken from 'jsonwebtoken';
 import formidable from "formidable";
@@ -16,7 +15,7 @@ export async function login(req, res) {
 
     const user = await User.findOne({ email });
     if (!user || !(await user.comparePassword(password))) {
-      return sendResponse(res, 401, "application/json", { message : "Invalid email or password" });
+      return sendResponse(res, 401, "application/json", { message: "Invalid email or password" });
     }
 
     let jwtSecretKey = process.env.JWT_SECRET_KEY;
@@ -71,13 +70,12 @@ export async function update(req, res) {
       const { newUsername, newEmail, newPassword } = fields;
       let newPicture = null;
 
-      const decoded = extractTokenFromHeader(req);
-      const { username } = decoded;
+      const { username } = req.user;
 
       const user = await User.findOne({ username });
 
       if (!user) {
-        return sendResponse(res, 404, "application/json", { message: "User not found" }); 
+        return sendResponse(res, 404, "application/json", { message: "User not found" });
       }
 
       if (files.picture && files.picture[0]) {
@@ -128,8 +126,7 @@ export async function update(req, res) {
 
 export async function getUserDetails(req, res) {
   try {
-    const decoded = extractTokenFromHeader(req);
-    const { username } = decoded;
+    const { username } = req.user;
 
     const user = await User.findOne({ username });
     const { password: _, ...safeUser } = user.toObject();
@@ -145,8 +142,7 @@ export async function getUserDetails(req, res) {
 
 export async function getUserProfilePicture(req, res) {
   try {
-    const decoded = extractTokenFromHeader(req);
-    const { username } = decoded;
+    const { username } = req.user;
 
     const user = await User.findOne({ username }).select("picture");
     if (!user) {

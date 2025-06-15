@@ -3,7 +3,7 @@ import { connectDb } from './configs/DatabaseConfig.js';
 import { getRedisClient } from './configs/RedisConfig.js';
 import router from "./routes/router.js";
 import dotenv from 'dotenv'
-import { stringify } from "querystring";
+
 dotenv.config()
 
 connectDb();

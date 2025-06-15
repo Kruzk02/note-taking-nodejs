@@ -1,7 +1,6 @@
 import User from '../models/userModel.js';
 import Note from '../models/noteModel.js'
 import sendResponse from '../utils/responseBody.js';
-import { extractTokenFromHeader } from "../utils/JwtUtil.js";
 import formidable from "formidable";
 import path from "path";
 import fs from 'fs';
@@ -44,8 +43,7 @@ export async function saveNote(req, res) {
 
       let icon = null;
 
-      const decoded = extractTokenFromHeader(req);
-      const { username } = decoded;
+      const { username } = req.user;
 
       const user = await User.findOne({ username }).select("_id");
       if (!user) {
@@ -131,8 +129,7 @@ export async function updateNote(req, res) {
         return sendResponse(res, 404, "application/json", { message: "Note not found" });
       }
 
-      const decoded = extractTokenFromHeader(req);
-      const { username } = decoded;
+      const { username } = req.user;
       const user = await User.findOne({ username }).select("_id");
       if (!user) {
         return sendResponse(res, 404, "application/json", { message: "User not found" });
@@ -215,8 +212,7 @@ export async function findNoteById(req, res) {
 
 export async function findNoteByUser(req, res) {
   try {
-    const decoded = extractTokenFromHeader(req);
-    const { username } = decoded;
+    const { username } = req.user;
     const redisKey = `note:user:${username}`;
 
     const cachedNotes = await redisClient.lRange(redisKey, 0, -1);
@@ -255,8 +251,7 @@ export async function findNoteByUser(req, res) {
 
 export async function deleteNoteById(req, res) {
   try {
-    const decoded = extractTokenFromHeader(req);
-    const { username } = decoded;
+    const { username } = req.user;
     const user = await User.findOne({ username }).select('_id');
 
     const note = await Note.findById(req.params.id);

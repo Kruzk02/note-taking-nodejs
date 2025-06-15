@@ -3,7 +3,6 @@ import Note from "../models/noteModel.js";
 import Section from "../models/sectionModel.js";
 import Page from "../models/pageModel.js";
 import sendResponse from '../utils/responseBody.js';
-import { extractTokenFromHeader } from "../utils/JwtUtil.js";
 import getRequestBody from "../utils/requestBody.js";
 import { getRedisClient } from "../configs/RedisConfig.js";
 
@@ -17,8 +16,7 @@ export async function savePage(req, res) {
       return sendResponse(res, 400, "application/json", { message: "Page title is required" });
     }
 
-    const decoded = extractTokenFromHeader(req);
-    const { username } = decoded;
+    const { username } = req.user;
 
     const user = await User.findOne({ username }).select("_id");
     if (!user) {
@@ -62,12 +60,7 @@ export async function updatePage(req, res) {
       return sendResponse(res, 400, "application/json", { message: "At least title or content must not be empty" });
     }
 
-    const decoded = extractTokenFromHeader(req);
-    if (!decoded || !decoded.username) {
-      return sendResponse(res, 401, "application/json", { message: "Unauthorized, invalid token" });
-    }
-
-    const { username } = decoded;
+    const { username } = req.user;
 
     // Find the user
     const user = await User.findOne({ username }).select("_id");
@@ -134,12 +127,7 @@ export async function findAllPageBySectionId(req, res) {
       return sendResponse(res, 404, "application/json", { message: "Note not found" });
     }
 
-    const decoded = extractTokenFromHeader(req);
-    if (!decoded || !decoded.username) {
-      return sendResponse(res, 401, "application/json", { message: "Unauthorized, invalid token" });
-    }
-
-    const { username } = decoded;
+    const { username } = req.user;
     const user = await User.findOne({ username }).select("_id");
     if (!user) {
       return sendResponse(res, 404, "application/json", { message: "User not found" });
@@ -178,12 +166,7 @@ export async function findPageById(req, res) {
       return sendResponse(res, 404, "application/json", { mesage: "Note not found" });
     }
 
-    const decoded = extractTokenFromHeader(req);
-    if (!decoded || !decoded.username) {
-      return sendResponse(res, 401, "application/json", { message: "Unauthorized, invalid token" });
-    }
-
-    const { username } = decoded;
+    const { username } = req.user;
     const user = await User.findOne({ username }).select("_id");
     if (!user) {
       return sendResponse(res, 404, "application/json", { message: "User not found" });

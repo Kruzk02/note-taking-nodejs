@@ -2,7 +2,6 @@ import User from "../models/userModel.js";
 import Note from "../models/noteModel.js";
 import Section from "../models/sectionModel.js";
 import sendResponse from '../utils/responseBody.js';
-import { extractTokenFromHeader } from "../utils/JwtUtil.js";
 import getRequestBody from "../utils/requestBody.js";
 import { getRedisClient } from "../configs/RedisConfig.js";
 
@@ -24,8 +23,7 @@ export async function saveSection(req, res) {
       return sendResponse(res, 404, "application/json", { message: "Note not found" });
     }
 
-    const decoded = extractTokenFromHeader(req);
-    const { username } = decoded;
+    const { username } = req.user;
 
     // Fetch User from database
     const user = await User.findOne({ username }).select("_id");
