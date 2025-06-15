@@ -2,26 +2,27 @@ import { login, register, getUserDetails, getUserProfilePicture, update } from '
 import { saveNote, updateNote, findNoteById, deleteNoteById, findNoteByUser } from "../controllers/noteController.js";
 import { saveSection, getSections, deleteBySectionId } from "../controllers/sectionController.js";
 import { savePage, updatePage, findAllPageBySectionId, findPageById, deletePageById } from "../controllers/pageController.js";
+import { verifyJwt } from '../utils/JwtUtil.js';
 
 const routes = [
-  { method: "GET", path: ["api", "v1", "users", "details"], handler: getUserDetails },
-  { method: "GET", path: ["api", "v1", "users", "photo"], handler: getUserProfilePicture },
+  { method: "GET", path: ["api", "v1", "users", "details"], handler: getUserDetails, protected: true },
+  { method: "GET", path: ["api", "v1", "users", "photo"], handler: getUserProfilePicture, protected: true },
   { method: "POST", path: ["api", "v1", "users", "register"], handler: register },
   { method: "POST", path: ["api", "v1", "users", "login"], handler: login },
-  { method: "PUT", path: ["api", "v1", "users"], handler: update },
-  { method: "GET", path: ["api", "v1", "notes"], handler: findNoteByUser },
-  { method: "GET", path: ["api", "v1", "notes", ":id"], handler: findNoteById },
-  { method: "POST", path: ["api", "v1", "notes"], handler: saveNote },
-  { method: "PUT", path: ["api", "v1", "notes", ":id"], handler: updateNote },
-  { method: "DELETE", path: ["api", "v1", "notes", ":id"], handler: deleteNoteById },
-  { method: "GET", path: ["api", "v1", "notes", ":noteId", "sections"], handler: getSections },
-  { method: "POST", path: ["api", "v1", "notes", ":noteId", "sections"], handler: saveSection },
-  { method: "DELETE", path: ["api", "v1", "sections", ":id"], handler: deleteBySectionId },
-  { method: "GET", path: ["api", "v1", "sections", ":sectionId", "pages"], handler: findAllPageBySectionId },
-  { method: "GET", path: ["api", "v1", "pages", ":id"], handler: findPageById },
-  { method: "POST", path: ["api", "v1", "sections", ":sectionId", "pages"], handler: savePage },
-  { method: "PUT", path: ["api", "v1", "pages", ":id"], handler: updatePage },
-  { method: "DELETE", path: ["api", "v1", "pages", ":id"], handler: deletePageById }
+  { method: "PUT", path: ["api", "v1", "users"], handler: update, protected: true },
+  { method: "GET", path: ["api", "v1", "notes"], handler: findNoteByUser, protected: true },
+  { method: "GET", path: ["api", "v1", "notes", ":id"], handler: findNoteById, protected: true },
+  { method: "POST", path: ["api", "v1", "notes"], handler: saveNote, protected: true },
+  { method: "PUT", path: ["api", "v1", "notes", ":id"], handler: updateNote, proteced: true },
+  { method: "DELETE", path: ["api", "v1", "notes", ":id"], handler: deleteNoteById, proteced: true },
+  { method: "GET", path: ["api", "v1", "notes", ":noteId", "sections"], handler: getSections, proteced: true },
+  { method: "POST", path: ["api", "v1", "notes", ":noteId", "sections"], handler: saveSection, proteced: true },
+  { method: "DELETE", path: ["api", "v1", "sections", ":id"], handler: deleteBySectionId, proteced: true },
+  { method: "GET", path: ["api", "v1", "sections", ":sectionId", "pages"], handler: findAllPageBySectionId, proteced: true },
+  { method: "GET", path: ["api", "v1", "pages", ":id"], handler: findPageById, proteced: true },
+  { method: "POST", path: ["api", "v1", "sections", ":sectionId", "pages"], handler: savePage, proteced: true },
+  { method: "PUT", path: ["api", "v1", "pages", ":id"], handler: updatePage, proteced: true },
+  { method: "DELETE", path: ["api", "v1", "pages", ":id"], handler: deletePageById, proteced: true }
 ]
 
 function mathRoute(method, pathSegments) {
@@ -39,7 +40,7 @@ function mathRoute(method, pathSegments) {
     })
 
     if (isMatch) {
-      return { handler: route.handler, params }
+      return { handler: route.handler, params, protected: route.protected }
     }
   }
   return null;
@@ -54,7 +55,13 @@ export default function router(req, res) {
 
   if (match) {
     req.params = match.params;
-    return match.handler(req, res);
+
+    const proceed = () => match.handler(req, res);
+
+    if (match.protected) {
+      return verifyJwt(req, res, proceed);
+    }
+    return proceed();
   }
 
   res.writeHead(404, { "Content-Type": "application/json" });
